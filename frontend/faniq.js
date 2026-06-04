@@ -1,0 +1,961 @@
+// ── globals ──────────────────────────────────────────────────────────────────
+var REAL = null;          // populated from real_data.json
+var MODEL = null;         // populated from model_results.json
+var ACTIVE_TEAM = "sf49ers";
+
+var MLB_TEAMS = new Set(["rockies","yankees","cubs","cardinals","pirates","dodgers"]);
+var NFL_TEAMS = new Set(["sf49ers","chiefs","cowboys","eagles","giants","commanders",
+  "seahawks","rams","cardinals_nfl","bears","lions","packers","vikings","saints",
+  "falcons","buccaneers","panthers","bills","patriots","dolphins","jets","chiefs",
+  "raiders","chargers","broncos","ravens","steelers","browns","bengals","texans",
+  "colts","jaguars","titans"]);
+
+function activeSport() {
+  return MLB_TEAMS.has(ACTIVE_TEAM) ? "baseball" : "football";
+}
+var chartsInit = false;
+var chartInstances = {};
+
+var GOLD = '#AA8A3C', GOLD2 = '#C9A84C', BLUE = '#3B82F6', GREEN = '#22C55E',
+    RED = '#EF4444', PURPLE = '#8B5CF6', ORANGE = '#F97316', MUTED = '#9CA3AF', GRID = '#1E1E2E';
+
+// ── mock fallback data ────────────────────────────────────────────────────────
+var fans = [
+  { id:1, name:'Marcus Thompson', init:'MT', color:'#6366F1', tier:'platinum', loyalty:91, ltv:8240, risk:8, section:'Sec 120', ghostRate:'6%', lastContact:'2 days ago', attend:16, party:3, tags:['Family','Jersey Buyer','Social'] },
+  { id:2, name:'Sarah Chen',      init:'SC', color:'#0EA5E9', tier:'platinum', loyalty:88, ltv:11200, risk:12, section:'Sec 108', ghostRate:'12%', lastContact:'1 day ago', attend:14, party:2, tags:['Premium','Early Arrival'] },
+  { id:3, name:'Priya Kapoor',    init:'PK', color:'#F43F5E', tier:'at-risk',  loyalty:44, ltv:6840,  risk:74, section:'Sec 133', ghostRate:'56%', lastContact:'3 weeks ago', attend:7,  party:4, tags:['At-Risk','Family'] },
+  { id:4, name:'James Williams',  init:'JW', color:'#10B981', tier:'gold',     loyalty:71, ltv:4120,  risk:23, section:'Sec 215', ghostRate:'25%', lastContact:'5 days ago', attend:12, party:1, tags:['Solo','Merch Buyer'] },
+  { id:5, name:'David Park',      init:'DP', color:'#F59E0B', tier:'silver',   loyalty:58, ltv:2100,  risk:41, section:'Sec 302', ghostRate:'33%', lastContact:'2 weeks ago', attend:8,  party:2, tags:['Casual','Price Sensitive'] },
+  { id:6, name:'Amanda Foster',   init:'AF', color:'#8B5CF6', tier:'gold',     loyalty:76, ltv:5380,  risk:19, section:'Sec 118', ghostRate:'19%', lastContact:'3 days ago', attend:13, party:4, tags:['Family','Food','Social'] },
+  { id:7, name:'Robert Kim',      init:'RK', color:'#EC4899', tier:'at-risk',  loyalty:38, ltv:3200,  risk:81, section:'Sec 228', ghostRate:'62%', lastContact:'1 month ago', attend:5,  party:2, tags:['At-Risk','Lapsed'] },
+  { id:8, name:'Lisa Martinez',   init:'LM', color:'#14B8A6', tier:'bronze',   loyalty:29, ltv:640,   risk:55, section:'Sec 418', ghostRate:'75%', lastContact:'6 weeks ago', attend:3,  party:1, tags:['Casual','Lapsed'] },
+];
+
+var ghostFans = [
+  { name:'Robert Kim',     section:'228-F-12', rate:'62%', nextProb:'78%', last:'1 month',  action:'Incentive Offer' },
+  { name:'Priya Kapoor',   section:'133-B-7',  rate:'56%', nextProb:'71%', last:'3 weeks',  action:'Personal Outreach' },
+  { name:'Lisa Martinez',  section:'418-A-2',  rate:'75%', nextProb:'83%', last:'6 weeks',  action:'Win-Back Campaign' },
+  { name:'Tom Bradley',    section:'122-B-4',  rate:'50%', nextProb:'65%', last:'2 weeks',  action:'Incentive Offer' },
+  { name:'Nina Osei',      section:'122-B-5',  rate:'44%', nextProb:'58%', last:'10 days',  action:'Email + SMS' },
+  { name:'David Park',     section:'302-C-9',  rate:'33%', nextProb:'45%', last:'2 weeks',  action:'Reminder Push' },
+];
+
+// ── API base (same origin in prod; localhost:8000 when opening frontend directly) ──
+var API_BASE = (window.location.port === '5175' || window.location.protocol === 'file:')
+  ? 'http://localhost:8000'
+  : '';
+
+// ── load real data ─────────────────────────────────────────────────────────────
+function loadRealData(cb) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_BASE + '/api/data?t=' + Date.now());
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      try { REAL = JSON.parse(xhr.responseText); cb(true); }
+      catch(e) { cb(false); }
+    } else { cb(false); }
+  };
+  xhr.onerror = function() { cb(false); };
+  xhr.send();
+}
+
+function loadModelData(cb) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_BASE + '/api/model?t=' + Date.now());
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      try { MODEL = JSON.parse(xhr.responseText); cb(true); }
+      catch(e) { cb(false); }
+    } else { cb(false); }
+  };
+  xhr.onerror = function() { cb(false); };
+  xhr.send();
+}
+
+// ── get active team real data ──────────────────────────────────────────────────
+function teamData() {
+  return REAL && REAL.teams && REAL.teams[ACTIVE_TEAM] ? REAL.teams[ACTIVE_TEAM] : null;
+}
+
+// ── navigation ────────────────────────────────────────────────────────────────
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  chartsInit = false;
+  setTimeout(initCharts, 60);
+}
+
+function updateTeam(val) {
+  ACTIVE_TEAM = val;
+  chartsInit = false;
+  // Sync the predictor dropdown
+  var predTeam = document.getElementById('pred-team');
+  if (predTeam) predTeam.value = val;
+  refreshRealDataPanels();
+  initCharts();
+  renderModelTab();   // re-render model tab for the active sport
+  runPredictor();
+}
+
+// ── real data panel refresh ───────────────────────────────────────────────────
+function refreshRealDataPanels() {
+  var td = teamData();
+  if (!td) return;
+
+  var ti = td.team_info || {};
+  var stats = td.attendance_stats || {};
+  var hist  = td.attendance_history || {};
+
+  // ── overview stat overrides ────────────────────────────────────────────────
+  var avgAtt = stats.avg_attendance;
+  var cap = ti.venue_capacity || 68500;
+  var ghostGamePct = td.games
+    ? td.games.filter(function(g){ return g.is_home && g.ghost_risk > 0.25; }).length / Math.max(1, td.games.filter(function(g){ return g.is_home; }).length) * 100
+    : 22.3;
+
+  setEl('real-team-name', ti.name || ACTIVE_TEAM);
+  setEl('real-record', ti.record || '?');
+  setEl('real-venue', ti.venue_name || '');
+  setEl('real-capacity', cap.toLocaleString());
+  setEl('real-avg-att', avgAtt ? avgAtt.toLocaleString() : '--');
+  setEl('real-fill-pct', stats.avg_fill_pct ? stats.avg_fill_pct + '%' : '--');
+  setEl('real-ghost-pct', ghostGamePct.toFixed(1) + '%');
+  setEl('real-sentiment', (td.sentiment_score || 50) + '/100');
+
+  // ── news feed ─────────────────────────────────────────────────────────────
+  var newsEl = document.getElementById('real-news-feed');
+  if (newsEl && td.news && td.news.length) {
+    newsEl.innerHTML = td.news.slice(0,6).map(function(a) {
+      return '<div class="news-item">' +
+        '<div class="news-date">' + a.date + '</div>' +
+        '<div class="news-headline">' + a.headline + '</div>' +
+        (a.description ? '<div class="news-desc">' + a.description.slice(0,120) + '…</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  // ── injury list ────────────────────────────────────────────────────────────
+  var injEl = document.getElementById('real-injuries');
+  if (injEl && td.injuries && td.injuries.length) {
+    injEl.innerHTML = td.injuries.slice(0,8).map(function(inj) {
+      var color = inj.status === 'Out' ? RED : inj.status === 'Injured Reserve' ? '#7F1D1D' : ORANGE;
+      return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid var(--border)">' +
+        '<span style="font-weight:600;font-size:0.85rem;flex:1">' + inj.player + '</span>' +
+        '<span style="font-size:0.72rem;color:var(--muted)">' + inj.position + '</span>' +
+        '<span style="font-size:0.72rem;font-weight:600;color:' + color + ';min-width:80px;text-align:right">' + inj.status + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ── weather forecast ──────────────────────────────────────────────────────
+  var wxEl = document.getElementById('real-weather');
+  if (wxEl && td.weather_forecast && td.weather_forecast.length) {
+    wxEl.innerHTML = td.weather_forecast.slice(0,7).map(function(d) {
+      var icon = d.precip_mm > 1 ? '🌧' : d.max_temp_c > 32 ? '☀️' : d.max_temp_c < 8 ? '❄️' : '⛅';
+      var ghostRisk = '';
+      if (d.precip_prob > 60 || d.max_temp_c > 35 || d.max_temp_c < 5) {
+        ghostRisk = '<span style="font-size:0.65rem;color:' + RED + '">+ghost risk</span>';
+      }
+      return '<div class="wx-day">' +
+        '<div class="wx-date">' + d.date.slice(5) + '</div>' +
+        '<div class="wx-icon">' + icon + '</div>' +
+        '<div class="wx-temp">' + Math.round(d.max_temp_c) + '°C</div>' +
+        '<div class="wx-rain">' + d.precip_prob + '%</div>' +
+        ghostRisk +
+      '</div>';
+    }).join('');
+  }
+
+  // ── F1 calendar ───────────────────────────────────────────────────────────
+  var f1El = document.getElementById('real-f1');
+  if (f1El && REAL && REAL.f1 && REAL.f1.length) {
+    f1El.innerHTML = REAL.f1.slice(0,5).map(function(r) {
+      return '<div style="padding:0.5rem 0;border-bottom:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<span style="font-weight:600;font-size:0.85rem">' + r.short_name + '</span>' +
+          '<span style="font-size:0.75rem;color:var(--muted)">' + r.date + '</span>' +
+        '</div>' +
+        (r.top3.length ? '<div style="font-size:0.75rem;color:var(--muted);margin-top:2px">' +
+          r.top3.map(function(p){ return p.pos + '. ' + p.driver; }).join(' · ') + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  // ── historical attendance panel ────────────────────────────────────────────
+  var histEl = document.getElementById('real-history');
+  if (histEl) {
+    var rows = Object.keys(hist).map(function(yr) {
+      var h = hist[yr];
+      return '<tr><td>' + yr + '</td><td>' + h.avg.toLocaleString() + '</td><td>' + h.total.toLocaleString() + '</td><td>' + h.games + '</td></tr>';
+    });
+    if (stats.season) {
+      rows.push('<tr style="color:var(--gold);font-weight:600"><td>' + stats.season + '</td><td>' + (stats.avg_attendance||'').toLocaleString() + '</td><td>' + (stats.total_attendance||'').toLocaleString() + '</td><td>' + (stats.home_games||'') + '</td></tr>');
+    }
+    histEl.innerHTML = rows.join('');
+  }
+}
+
+function setEl(id, val) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ── fan table ─────────────────────────────────────────────────────────────────
+function buildFanTable() {
+  var tbody = document.getElementById('fanTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = fans.map(function(f) {
+    return '<tr onclick="showFanDetail(' + f.id + ')">' +
+      '<td><div style="display:flex;align-items:center;gap:0.7rem">' +
+        '<div class="fan-avatar" style="width:36px;height:36px;font-size:0.85rem;background:' + f.color + '">' + f.init + '</div>' +
+        '<div><div style="font-size:0.85rem;font-weight:600">' + f.name + '</div><div class="fan-meta">' + f.section + '</div></div>' +
+      '</div></td>' +
+      '<td><span class="tier tier-' + f.tier + '">' + f.tier.replace('-',' ') + '</span></td>' +
+      '<td><div style="font-size:0.88rem;font-weight:600">' + f.loyalty + '</div>' +
+        '<div class="progress-bar" style="width:80px"><div class="progress-fill" style="width:' + f.loyalty + '%;background:' + (f.loyalty>70?GREEN:f.loyalty>50?ORANGE:RED) + '"></div></div></td>' +
+      '<td style="font-weight:600;color:var(--gold)">$' + f.ltv.toLocaleString() + '</td>' +
+      '<td><span style="color:' + (f.risk>60?RED:f.risk>30?ORANGE:GREEN) + ';font-weight:600">' + f.risk + '%</span></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function showFanDetail(id) {
+  var f = fans.filter(function(x){ return x.id===id; })[0];
+  var panel = document.getElementById('fanDetailContent');
+  panel.innerHTML =
+    '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">' +
+      '<div class="fan-avatar" style="background:' + f.color + ';width:60px;height:60px;font-size:1.3rem">' + f.init + '</div>' +
+      '<div><div style="font-size:1.1rem;font-weight:700">' + f.name + '</div>' +
+        '<div class="fan-meta">' + f.section + ' · Party of ' + f.party + '</div>' +
+        '<div style="margin-top:5px">' + f.tags.map(function(t){ return '<span class="tag tag-blue">'+t+'</span>'; }).join('') + '</div></div>' +
+      '<div style="margin-left:auto"><span class="tier tier-' + f.tier + '">' + f.tier.replace('-',' ') + '</span></div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1.2rem">' +
+      '<div><div class="stat-label" style="font-size:0.7rem">Loyalty Score</div><div style="font-size:1.4rem;font-weight:700;color:' + (f.loyalty>70?GREEN:f.loyalty>50?ORANGE:RED) + '">' + f.loyalty + '<span style="font-size:0.75rem;color:var(--muted)">/100</span></div></div>' +
+      '<div><div class="stat-label" style="font-size:0.7rem">3-Year LTV</div><div style="font-size:1.4rem;font-weight:700;color:var(--gold)">$' + f.ltv.toLocaleString() + '</div></div>' +
+      '<div><div class="stat-label" style="font-size:0.7rem">Games Attended</div><div style="font-size:1.4rem;font-weight:700">' + f.attend + '/17</div></div>' +
+      '<div><div class="stat-label" style="font-size:0.7rem">Churn Risk</div><div style="font-size:1.4rem;font-weight:700;color:' + (f.risk>60?RED:f.risk>30?ORANGE:GREEN) + '">' + f.risk + '%</div></div>' +
+    '</div>' +
+    '<div class="stat-label" style="font-size:0.7rem;margin-bottom:0.3rem">Ghost Ticket Rate</div>' +
+    '<div style="font-size:0.88rem;font-weight:600">' + f.ghostRate + '</div>' +
+    '<div class="progress-bar" style="margin-bottom:1.2rem"><div class="progress-fill" style="width:' + f.ghostRate + ';background:' + (parseInt(f.ghostRate)>50?RED:parseInt(f.ghostRate)>25?ORANGE:GREEN) + '"></div></div>' +
+    '<div class="insight" style="margin-bottom:0.8rem"><div class="insight-label">AI Recommendation</div><div class="insight-text">' + getFanRec(f) + '</div></div>' +
+    '<div style="display:flex;gap:0.5rem;flex-wrap:wrap"><button class="btn-sm btn-gold">Send Offer</button><button class="btn-sm btn-outline">Full History</button><button class="btn-sm btn-outline">Flag Outreach</button></div>';
+}
+
+function getFanRec(f) {
+  if (f.tier==='at-risk') return 'High churn risk. Last contact: '+f.lastContact+'. Recommend personal call from fan relations + exclusive playoff priority access. Model predicts 52% churn reduction.';
+  if (f.tier==='platinum') return 'Top-tier — protect this relationship. Pre-game concierge experience for next home game. 2.8× more likely to refer new fans with an exclusive "bring a friend" package.';
+  if (f.tier==='gold') return 'Near Platinum threshold. One premium experience push could accelerate upgrade. Try premium seating trial + loyalty point bonus for next 3 games.';
+  return 'Casual fan with upside potential. Geo-targeting and price-incentive offers most effective. Consider a "first premium experience" trial at 40% discount.';
+}
+
+function buildGhostTable() {
+  var tbody = document.getElementById('ghostTableBody');
+  if (!tbody) return;
+
+  // Merge real game data if available
+  var rows = ghostFans;
+  var td = teamData();
+  if (td && td.games) {
+    var highRisk = td.games.filter(function(g){ return g.is_home && g.ghost_risk > 0.25; }).slice(0,6);
+    if (highRisk.length) {
+      rows = highRisk.map(function(g, i) {
+        return {
+          name: 'Season Holder #' + (1000 + i * 37),
+          section: 'Sec ' + (100 + Math.floor(g.ghost_risk*200)),
+          rate: Math.round(g.ghost_risk * 100) + '%',
+          nextProb: Math.round(Math.min(g.ghost_risk * 130, 95)) + '%',
+          last: g.weather && g.weather.is_rain ? 'Rain game' : g.date,
+          action: g.ghost_risk > 0.4 ? 'Personal Outreach' : 'Incentive Offer',
+          game: g.name,
+        };
+      });
+    }
+  }
+
+  tbody.innerHTML = rows.map(function(f) {
+    return '<tr>' +
+      '<td>' + (f.game ? '<div style="font-size:0.85rem;font-weight:600">' + f.name + '</div><div style="font-size:0.72rem;color:var(--muted)">' + f.game + '</div>' : f.name) + '</td>' +
+      '<td style="color:var(--muted)">' + f.section + '</td>' +
+      '<td><span style="color:' + (parseInt(f.rate)>50?RED:ORANGE) + ';font-weight:600">' + f.rate + '</span></td>' +
+      '<td><span style="color:' + (parseInt(f.nextProb)>70?RED:ORANGE) + ';font-weight:700">' + f.nextProb + '</span></td>' +
+      '<td style="color:var(--muted)">' + f.last + '</td>' +
+      '<td><span class="tag tag-orange">' + f.action + '</span></td>' +
+      '<td><button class="btn-sm btn-gold" style="font-size:0.7rem">Act Now</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── charts ────────────────────────────────────────────────────────────────────
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function mk(id, config) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  destroyChart(id);
+  chartInstances[id] = new Chart(el, config);
+}
+
+function tickColor(color, extra) {
+  return Object.assign({ ticks: { color: color || MUTED, font: { size: 10 } }, grid: { color: GRID } }, extra || {});
+}
+
+function initCharts() {
+  if (chartsInit) return;
+  chartsInit = true;
+
+  var td = teamData();
+  var stats = td ? (td.attendance_stats || {}) : {};
+  var hist  = td ? (td.attendance_history || {}) : {};
+  var games = td ? (td.games || []) : [];
+  var homeGames = games.filter(function(g){ return g.is_home && g.attendance; });
+  var sentScore = td ? (td.sentiment_score || 50) : 50;
+
+  // ─── OVERVIEW charts ───────────────────────────────────────────────────────
+  mk('tierChart', {
+    type: 'doughnut',
+    data: {
+      labels: ['Platinum (5%)', 'Gold (20%)', 'Silver (35%)', 'Bronze/Casual (40%)'],
+      datasets: [{ data: [3620,14488,25354,28976], backgroundColor: [GOLD,GOLD2,'#6B7280','#92400E'], borderWidth:0 }]
+    },
+    options: { plugins: { legend: { labels: { color: MUTED, font: { size:11 } } } }, cutout:'60%' }
+  });
+
+  mk('revenueChart', {
+    type: 'bar',
+    data: {
+      labels: ['Platinum','Gold','Silver','Bronze'],
+      datasets: [
+        { label:'Tickets', data:[18.8,24.9,18.5,7.1], backgroundColor:GOLD },
+        { label:'F&B',     data:[7.6,9.8,8.2,3.4],    backgroundColor:BLUE },
+        { label:'Merch',   data:[5.4,7.1,4.4,1.8],    backgroundColor:PURPLE },
+        { label:'Referral',data:[11.8,6.2,2.1,0.4],   backgroundColor:GREEN },
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color:MUTED, font:{size:10} } } },
+      scales: {
+        x: Object.assign({ stacked:true }, tickColor()),
+        y: Object.assign({ stacked:true }, tickColor(), { ticks: { color:MUTED, callback:function(v){ return '$'+v+'M'; } } })
+      }
+    }
+  });
+
+  // Real loyalty trend augmented with sentiment
+  var sentOffset = (sentScore - 50) / 10;
+  mk('loyaltyTrendChart', {
+    type: 'line',
+    data: {
+      labels: ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'],
+      datasets: [
+        { label:'Your Team', data:[68,69,71,70,72,71,73,74,73,75,74,73].map(function(v,i){ return i >= 9 ? Math.round(v + sentOffset) : v; }), borderColor:GOLD, backgroundColor:'rgba(170,138,60,0.1)', tension:0.4, fill:true, pointRadius:3 },
+        { label:'NFL Avg',   data:[59,59,61,60,62,61,62,63,62,63,62,61], borderColor:BLUE, borderDash:[4,4], tension:0.4, pointRadius:0 }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color:MUTED, font:{size:10} } } },
+      scales: { x: tickColor(), y: Object.assign({ min:50, max:85 }, tickColor()) }
+    }
+  });
+
+  // ─── REAL attendance chart (game-by-game) ──────────────────────────────────
+  if (homeGames.length) {
+    var labels = homeGames.map(function(g){ return g.opponent.replace('San Francisco ','').replace('Los Angeles ','LA ').slice(0,10); });
+    var attVals = homeGames.map(function(g){ return g.attendance; });
+    var capLine = homeGames.map(function(g){ return g.capacity; });
+    var colors  = homeGames.map(function(g){
+      if (!g.won) return 'rgba(239,68,68,0.75)';
+      if (g.weather && g.weather.is_rain) return 'rgba(59,130,246,0.75)';
+      return 'rgba(170,138,60,0.8)';
+    });
+
+    mk('attendanceChart', {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label:'Attendance', data:attVals, backgroundColor:colors, order:2 },
+          { label:'Capacity',   data:capLine, borderColor:'rgba(255,255,255,0.2)', borderDash:[4,4], type:'line', pointRadius:0, borderWidth:1, order:1 },
+        ]
+      },
+      options: {
+        plugins: {
+          legend: { labels: { color:MUTED, font:{size:10} } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                var g = homeGames[ctx.dataIndex];
+                var lines = [ctx.dataset.label+': '+ctx.parsed.y.toLocaleString()];
+                if (g && ctx.datasetIndex===0) {
+                  lines.push((g.won ? '✅ Win' : '❌ Loss') + ' ' + g.our_score + '-' + g.opp_score);
+                  if (g.weather) lines.push('🌡 '+g.weather.avg_temp_c+'°C | rain='+g.weather.is_rain);
+                  lines.push('Ghost risk: '+(g.ghost_risk*100).toFixed(0)+'%');
+                }
+                return lines;
+              }
+            }
+          }
+        },
+        scales: {
+          x: Object.assign({}, tickColor(), { ticks: { maxRotation:45, font:{size:9} } }),
+          y: Object.assign({ min: Math.max(0, Math.min.apply(null,attVals) - 5000) }, tickColor(), { ticks: { callback:function(v){ return (v/1000).toFixed(0)+'K'; } } })
+        }
+      }
+    });
+  }
+
+  // Historical multi-year attendance
+  var histYears = Object.keys(hist).sort();
+  if (histYears.length && stats.avg_attendance) {
+    histYears.push(String(stats.season || 2024));
+    var histVals = histYears.map(function(yr) {
+      return yr === String(stats.season||2024) ? stats.avg_attendance : (hist[yr]||{}).avg || 0;
+    });
+    mk('historyChart', {
+      type: 'bar',
+      data: {
+        labels: histYears,
+        datasets: [{ label:'Avg Home Attendance', data:histVals, backgroundColor:[MUTED, MUTED, GOLD] }]
+      },
+      options: {
+        plugins: { legend:{ display:false } },
+        scales: {
+          x: tickColor(),
+          y: Object.assign({ min: Math.max(0, Math.min.apply(null,histVals)-5000) }, tickColor(), { ticks:{ callback:function(v){ return (v/1000).toFixed(0)+'K'; } } })
+        }
+      }
+    });
+  }
+
+  // Ghost risk by game (weather-adjusted)
+  if (homeGames.length) {
+    var gLabels = homeGames.map(function(g){ return g.opponent.slice(0,8); });
+    var gRisks  = homeGames.map(function(g){ return g.ghost_risk ? Math.round(g.ghost_risk*100) : 18; });
+    var gColors = gRisks.map(function(r){ return r>40?RED : r>25?ORANGE : GREEN; });
+    mk('ghostRiskChart', {
+      type: 'bar',
+      data: {
+        labels: gLabels,
+        datasets: [{ label:'Ghost Risk %', data:gRisks, backgroundColor:gColors }]
+      },
+      options: {
+        plugins: {
+          legend:{ display:false },
+          tooltip:{
+            callbacks:{
+              afterLabel: function(ctx){
+                var g = homeGames[ctx.dataIndex];
+                var lines = [];
+                if (g.weather) {
+                  if (g.weather.is_rain) lines.push('🌧 Rain game +12%');
+                  if (g.weather.is_hot) lines.push('🌡 Heat +8%');
+                }
+                if (!g.won) lines.push('❌ Team lost this game');
+                return lines;
+              }
+            }
+          }
+        },
+        scales: {
+          x: Object.assign({}, tickColor(), { ticks:{ maxRotation:45, font:{size:9} } }),
+          y: Object.assign({ min:0, max:70 }, tickColor(), { ticks:{ callback:function(v){ return v+'%'; } } })
+        }
+      }
+    });
+  }
+
+  // Ghost signal feature importance
+  mk('ghostSignalChart', {
+    type: 'bar',
+    data: {
+      labels: ['No check-in 48h','Lapsed app use','Team losing streak','Away game','Weather','Last-min resale','Social silence'],
+      datasets: [{ data:[28,21,17,14,9,7,4], backgroundColor:[RED,ORANGE,'#EAB308',BLUE,PURPLE,'#EC4899','#6B7280'] }]
+    },
+    options: {
+      indexAxis:'y',
+      plugins:{ legend:{ display:false } },
+      scales:{ x:tickColor(), y:tickColor() }
+    }
+  });
+
+  // Game day offer chart
+  mk('offerChart', {
+    type: 'line',
+    data: {
+      labels: ['9AM','10AM','11AM','12PM','1PM','2PM','3PM','4PM'],
+      datasets: [
+        { label:'Offers Sent', data:[820,1240,2100,3400,2800,1900,1400,1160], borderColor:BLUE, tension:0.4, yAxisID:'y', pointRadius:3 },
+        { label:'Revenue ($K)', data:[12,28,58,94,82,54,38,21], borderColor:GOLD, tension:0.4, yAxisID:'y1', pointRadius:3 }
+      ]
+    },
+    options: {
+      plugins:{ legend:{ labels:{ color:MUTED, font:{size:10} } } },
+      scales: {
+        x: tickColor(),
+        y: tickColor(BLUE),
+        y1: { position:'right', ticks:{ color:GOLD, font:{size:10}, callback:function(v){ return '$'+v+'K'; } }, grid:{ display:false } }
+      }
+    }
+  });
+
+  // LTV waterfall
+  mk('ltvWaterfallChart', {
+    type: 'bar',
+    data: {
+      labels: ['Tickets','Food & Bev','Merch','Premium','Digital','Referral','Total LTV'],
+      datasets: [{ data:[5200,2100,1480,1800,420,3280,14280], backgroundColor:[BLUE,ORANGE,PURPLE,'#EC4899','#14B8A6',GREEN,GOLD] }]
+    },
+    options: {
+      plugins:{ legend:{ display:false } },
+      scales:{ x:tickColor(), y:Object.assign({}, tickColor(), { ticks:{ callback:function(v){ return '$'+v.toLocaleString(); } } }) }
+    }
+  });
+
+  mk('migrationChart', {
+    type: 'bar',
+    data: {
+      labels: ['Bronze→Silver','Silver→Gold','Gold→Platinum','Platinum→Gold','Gold→Silver','Silver→Bronze'],
+      datasets: [
+        { label:'Upgraded',   data:[1840,820,240,0,0,0],   backgroundColor:GREEN },
+        { label:'Downgraded', data:[0,0,0,180,420,680],    backgroundColor:RED }
+      ]
+    },
+    options: {
+      plugins:{ legend:{ labels:{ color:MUTED, font:{size:10} } } },
+      scales:{ x:Object.assign({}, tickColor(), { ticks:{ font:{size:9} } }), y:tickColor() }
+    }
+  });
+
+  mk('referralChart', {
+    type: 'bar',
+    data: {
+      labels: ['Platinum','Gold','Silver','Bronze'],
+      datasets: [{ data:[2.3,1.1,0.4,0.1], backgroundColor:[GOLD,GOLD2,'#6B7280','#92400E'] }]
+    },
+    options: { plugins:{ legend:{ display:false } }, scales:{ x:tickColor(), y:tickColor() } }
+  });
+
+  // Feature importance
+  mk('featureImportanceChart', {
+    type: 'bar',
+    data: {
+      labels: ['Attendance freq','Purchase history','App engagement','Social activity','Location signals','Ticket resale','Team performance'],
+      datasets: [{ data:[31,24,18,12,8,5,2], backgroundColor:GOLD }]
+    },
+    options: {
+      indexAxis:'y',
+      plugins:{ legend:{ display:false } },
+      scales: { x:Object.assign({},tickColor(),{ ticks:{ callback:function(v){ return v+'%'; } } }), y:tickColor() }
+    }
+  });
+
+  // Attendance forecast (real baseline + projection)
+  var forecastLabels = ['Wk8','Wk9','Wk10','Wk11','Wk12','Wk13(F)','Wk14(F)','Wk15(F)'];
+  var forecastActual = homeGames.length >= 5
+    ? homeGames.slice(-5).map(function(g){ return g.attendance; }).concat([null, null, null])
+    : [67400,68100,65800,66900,61200,null,null,null];
+  var lastReal = forecastActual.filter(function(v){ return v; }).pop() || 65000;
+  var forecastFwd = forecastActual.map(function(v,i){ return i>=4 ? Math.round(lastReal * (1+i*0.008)) : null; });
+
+  mk('attendanceForecastChart', {
+    type: 'line',
+    data: {
+      labels: forecastLabels,
+      datasets: [
+        { label:'Actual',   data:forecastActual, borderColor:GREEN, tension:0.3, pointRadius:4 },
+        { label:'Forecast', data:forecastFwd,    borderColor:GOLD, borderDash:[5,4], tension:0.3, pointRadius:4 },
+        { label:'Capacity', data:forecastActual.map(function(){ return stats.avg_attendance ? Math.round(stats.avg_attendance*1.04) : 68500; }), borderColor:'#374151', borderDash:[2,4], pointRadius:0 }
+      ]
+    },
+    options: {
+      plugins:{ legend:{ labels:{ color:MUTED, font:{size:10} } } },
+      scales: {
+        x: tickColor(),
+        y: Object.assign({ min:55000 }, tickColor(), { ticks:{ callback:function(v){ return (v/1000).toFixed(0)+'K'; } } })
+      }
+    }
+  });
+
+  mk('churnDistChart', {
+    type: 'bar',
+    data: {
+      labels: ['0-10%','10-20%','20-30%','30-40%','40-50%','50-60%','60-70%','70-80%','80-90%','90-100%'],
+      datasets: [{ data:[12800,14200,11400,9200,8100,5800,4400,2800,2400,1340],
+        backgroundColor:['rgba(34,197,94,0.7)','rgba(34,197,94,0.7)','rgba(34,197,94,0.7)','rgba(34,197,94,0.7)','rgba(34,197,94,0.7)',
+          'rgba(249,115,22,0.7)','rgba(249,115,22,0.7)','rgba(239,68,68,0.7)','rgba(239,68,68,0.7)','rgba(239,68,68,0.7)']
+      }]
+    },
+    options: {
+      plugins:{ legend:{ display:false } },
+      scales:{ x:tickColor(), y:Object.assign({},tickColor(),{ ticks:{ callback:function(v){ return (v/1000).toFixed(0)+'K'; } } }) }
+    }
+  });
+
+  mk('benchmarkChart', {
+    type: 'bar',
+    data: {
+      labels: ['Fan Loyalty','Ghost Ticket (inv.)','Avg LTV ($K)','AI Conversion','App Engage %','Holder Retention'],
+      datasets: [
+        { label:'Your Team',    data:[73,78,4.8,38,64,91], backgroundColor:'rgba(170,138,60,0.85)' },
+        { label:'NFL Avg',      data:[61,68,2.9,24,48,84], backgroundColor:'rgba(59,130,246,0.65)' },
+        { label:'Top Quartile', data:[82,86,7.2,52,78,96], backgroundColor:'rgba(34,197,94,0.65)' },
+      ]
+    },
+    options: {
+      plugins:{ legend:{ display:false } },
+      scales:{ x:tickColor(), y:Object.assign({ max:100 }, tickColor()) }
+    }
+  });
+
+  // Sentiment gauge (real score from news NLP)
+  mk('sentimentChart', {
+    type: 'doughnut',
+    data: {
+      labels: ['Positive signals', 'Neutral/Negative'],
+      datasets: [{ data:[sentScore, 100-sentScore], backgroundColor:[sentScore>60?GREEN:sentScore>40?ORANGE:RED, '#1E1E2E'], borderWidth:0 }]
+    },
+    options: {
+      circumference: 180, rotation:-90,
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ return ctx.label+': '+ctx.parsed+'pts'; } } } },
+      cutout:'70%'
+    }
+  });
+}
+
+// ── boot ──────────────────────────────────────────────────────────────────────
+function boot() {
+  buildFanTable();
+  buildGhostTable();
+
+  var statusEl = document.getElementById('data-status');
+  if (statusEl) statusEl.textContent = 'Loading real data…';
+
+  loadRealData(function(ok) {
+    if (ok && statusEl) {
+      var ts = REAL && REAL.scraped_at ? new Date(REAL.scraped_at).toLocaleString() : 'unknown';
+      statusEl.innerHTML = '🟢 <strong>Live data</strong> · scraped ' + ts;
+      statusEl.style.color = GREEN;
+    } else if (statusEl) {
+      statusEl.innerHTML = '🟡 Showing mock data · run <code>python3 scraper.py</code> to load real data';
+      statusEl.style.color = ORANGE;
+    }
+    refreshRealDataPanels();
+    initCharts();
+  });
+
+  loadModelData(function(ok) {
+    if (ok) renderModelTab();
+    setTimeout(runPredictor, 500); // init predictor once model loads
+  });
+}
+
+// ── model tab ─────────────────────────────────────────────────────────────────
+
+function renderModelTab() {
+  if (!MODEL) return;
+
+  // Route to correct sport model based on active team
+  var sport = activeSport();
+  var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+  var sportIcon  = sport === 'baseball' ? '⚾' : '🏈';
+  var sportName  = sport === 'baseball' ? 'MLB' : 'NFL';
+
+  var lm   = sportModel.linear_model || {};
+  var rf   = sportModel.rf_model || {};
+  var meth = sportModel.methodology || {};
+  var mc   = sportModel.model_comparison || {};
+  var en   = mc.elasticnet || {};
+  var rfmc = mc.randomforest || {};
+
+  // Update title
+  setEl('model-sport-title', sportIcon + ' ' + sportName + ' Attendance Prediction Model');
+  var sub = document.querySelector('#page-model .section-sub');
+  if (sub) sub.textContent = 'Real ESPN data · ' + sportName + ' · ' +
+    (meth.n_teams || '—') + ' teams · ' + (meth.seasons || []).length + ' seasons · ' +
+    (meth.total_home_games || '—') + ' home games · 60/20/20 chronological split';
+
+  // Best model: use RF if it beats ElasticNet on val (as in MLB)
+  var bestMc = (rfmc.test_mape != null && en.test_mape != null && rfmc.test_mape < en.test_mape) ? rfmc : en;
+  var bestName = (rfmc.test_mape != null && en.test_mape != null && rfmc.test_mape < en.test_mape) ? 'Random Forest' : 'ElasticNet';
+
+  // Stat cards
+  setEl('m-sport-badge', sportName);
+  setEl('m-samples-sub', sportName + ' home games · ' + (meth.seasons ? meth.seasons[0] + '–' + meth.seasons[meth.seasons.length-1] : ''));
+  setEl('m-samples', (meth.n_training_samples || '—').toString());
+  setEl('m-lin-r2',  en.test_r2 != null ? en.test_r2.toFixed(3) : '—');
+  setEl('m-lin-mae', en.test_mape != null ? en.test_mape.toFixed(1) + '% MAPE' : '—');
+  setEl('m-rf-r2',   bestMc.test_r2 != null ? bestMc.test_r2.toFixed(3) : '—');
+  setEl('m-rf-mae',  bestMc.test_mae != null ? Math.round(bestMc.test_mae).toLocaleString() + ' fans' : '—');
+  setEl('m-rf-name', bestName + ' · 60/20/20 chronological split · MAE: ');
+  setEl('m-ci', lm.rmse ? Math.round(lm.rmse * 1.96).toLocaleString() : '—');
+
+  // correlation chart
+  var corrData   = sportModel.correlations || {};
+  var flabels    = sportModel.feature_labels || {};
+  var corrKeys   = Object.keys(corrData).sort(function(a,b){ return Math.abs(corrData[b]) - Math.abs(corrData[a]); });
+  var corrLabels = corrKeys.map(function(k){ return flabels[k] || k; });
+  var corrVals   = corrKeys.map(function(k){ return corrData[k]; });
+  var corrColors = corrVals.map(function(v){ return v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)'; });
+
+  destroyChart('modelCorrChart');
+  chartInstances['modelCorrChart'] = new Chart(document.getElementById('modelCorrChart'), {
+    type: 'bar',
+    data: { labels: corrLabels, datasets: [{ data: corrVals, backgroundColor: corrColors, borderWidth: 0 }] },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx) { return 'r = ' + ctx.parsed.x.toFixed(3); } } } },
+      scales: {
+        x: { ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return v.toFixed(2); } }, grid: { color: GRID } },
+        y: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } }
+      }
+    }
+  });
+
+  // scatter: actual vs predicted
+  var preds = (sportModel.predictions || []).filter(function(p){ return p.actual && p.predicted; });
+  var scatterData = preds.map(function(p){
+    return { x: p.actual, y: p.predicted, won: p.won, team: p.team, opponent: p.opponent, date: p.date };
+  });
+  var allVals = preds.map(function(p){ return p.actual; });
+  var minV = Math.min.apply(null, allVals) - 2000;
+  var maxV = Math.max.apply(null, allVals) + 2000;
+
+  destroyChart('modelScatterChart');
+  chartInstances['modelScatterChart'] = new Chart(document.getElementById('modelScatterChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Games',
+        data: scatterData,
+        backgroundColor: scatterData.map(function(d){ return d.won ? 'rgba(170,138,60,0.75)' : 'rgba(239,68,68,0.65)'; }),
+        pointRadius: 5,
+      }, {
+        label: 'Perfect prediction',
+        data: [{ x: minV, y: minV }, { x: maxV, y: maxV }],
+        type: 'line', borderColor: 'rgba(255,255,255,0.2)', borderDash: [4,4], pointRadius: 0,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: function(ctx) {
+            var d = ctx.raw;
+            if (!d.date) return 'y=x reference';
+            return [d.team + ' vs ' + d.opponent, d.date,
+                    'Actual: ' + Math.round(d.x).toLocaleString(),
+                    'Predicted: ' + Math.round(d.y).toLocaleString(),
+                    'Error: ' + (Math.round(d.x) - Math.round(d.y) > 0 ? '+' : '') + Math.round(d.x - d.y).toLocaleString()];
+          }
+        }}
+      },
+      scales: {
+        x: { min: minV, max: maxV, ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return (v/1000).toFixed(0)+'K'; } }, grid: { color: GRID }, title: { display: true, text: 'Actual Attendance', color: MUTED, font: { size: 10 } } },
+        y: { min: minV, max: maxV, ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return (v/1000).toFixed(0)+'K'; } }, grid: { color: GRID }, title: { display: true, text: 'Predicted Attendance', color: MUTED, font: { size: 10 } } }
+      }
+    }
+  });
+
+  // RF feature importance
+  var fi = rf.feature_importance || lm.coefficients || {};
+  var fiKeys = Object.keys(fi).sort(function(a,b){ return Math.abs(fi[b]) - Math.abs(fi[a]); }).slice(0, 12);
+  var fiLabels = fiKeys.map(function(k){ return (sportModel.feature_labels||{})[k] || k; });
+  var fiVals = fiKeys.map(function(k){ return Math.abs(fi[k]); });
+
+  destroyChart('modelFIChart');
+  chartInstances['modelFIChart'] = new Chart(document.getElementById('modelFIChart'), {
+    type: 'bar',
+    data: { labels: fiLabels, datasets: [{ data: fiVals, backgroundColor: GOLD, borderWidth: 0 }] },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } },
+        y: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } }
+      }
+    }
+  });
+
+  // Linear coefficients (signed — shows direction)
+  var coeffs = lm.coefficients || {};
+  var cKeys = Object.keys(coeffs).sort(function(a,b){ return Math.abs(coeffs[b]) - Math.abs(coeffs[a]); }).slice(0, 12);
+  var cLabels = cKeys.map(function(k){ return (sportModel.feature_labels||{})[k] || k; });
+  var cVals   = cKeys.map(function(k){ return coeffs[k]; });
+  var cColors = cVals.map(function(v){ return v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)'; });
+
+  destroyChart('modelCoeffChart');
+  chartInstances['modelCoeffChart'] = new Chart(document.getElementById('modelCoeffChart'), {
+    type: 'bar',
+    data: { labels: cLabels, datasets: [{ data: cVals, backgroundColor: cColors, borderWidth: 0 }] },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx) {
+          var v = ctx.parsed.x;
+          return (v > 0 ? '+' : '') + Math.round(v).toLocaleString() + ' fans per unit';
+        }}}
+      },
+      scales: {
+        x: { ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return (v>0?'+':'') + Math.round(v); } }, grid: { color: GRID } },
+        y: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } }
+      }
+    }
+  });
+
+  // insights
+  var insEl = document.getElementById('model-insights');
+  if (insEl) {
+    var insights = sportModel.insights || [];
+    insEl.innerHTML = insights.length ? insights.map(function(txt) {
+      return '<div class="insight" style="margin-bottom:0"><div class="insight-text">' + txt + '</div></div>';
+    }).join('') : '<div style="color:var(--muted);font-size:0.85rem">No insights available</div>';
+  }
+
+  // model comparison table (replaces forward-predictions table)
+  var tbody = document.getElementById('model-fwd-body');
+  if (tbody) {
+    var rows = [
+      { name: 'Naive baseline (team mean)', d: { test_mape: meth.naive_baseline_test_mape, test_mae: meth.naive_baseline_test_mae }, floor: true },
+      { name: 'Ridge Regression',    d: mc.ridge || {} },
+      { name: 'ElasticNet (L1+L2)',  d: mc.elasticnet || {} },
+      { name: 'Random Forest',       d: mc.randomforest || {} },
+    ];
+    var baseMape = meth.naive_baseline_test_mape;
+    tbody.innerHTML = rows.map(function(r) {
+      var d = r.d;
+      var beats = (!r.floor && d.test_mape != null && baseMape != null && d.test_mape < baseMape);
+      var beatCell = r.floor ? '<span style="color:var(--muted)">— floor —</span>'
+                    : (beats ? '<span style="color:var(--green)">✓ beats baseline</span>'
+                             : '<span style="color:var(--muted)">at baseline</span>');
+      return '<tr>' +
+        '<td><strong>' + r.name + '</strong></td>' +
+        '<td>' + (d.train_r2 != null ? d.train_r2.toFixed(3) : '—') + '</td>' +
+        '<td>' + (d.val_r2 != null ? d.val_r2.toFixed(3) : '—') + '</td>' +
+        '<td style="font-weight:700;color:var(--gold)">' + (d.test_r2 != null ? d.test_r2.toFixed(3) : '—') + '</td>' +
+        '<td>' + (d.test_mae != null ? Math.round(d.test_mae).toLocaleString() : '—') + '</td>' +
+        '<td style="font-weight:600">' + (d.test_mape != null ? d.test_mape.toFixed(1) + '%' : '—') + '</td>' +
+        '<td>' + beatCell + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+}
+
+// ── interactive predictor ─────────────────────────────────────────────────────
+
+function runPredictor() {
+  if (!MODEL) return;
+  var teamKey = document.getElementById('pred-team').value;
+  var predSport = MLB_TEAMS.has(teamKey) ? 'baseball' : 'football';
+  var sportModel = (predSport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+  var lm = sportModel.linear_model || {};
+  var coeffs = lm.coefficients || {};
+  var week    = parseInt(document.getElementById('pred-week').value) || 8;
+  var oppPct  = parseInt(document.getElementById('pred-opp').value) / 100;
+  var streak  = parseInt(document.getElementById('pred-streak').value) || 0;
+  var weather = document.getElementById('pred-weather').value;
+  var gametype = document.getElementById('pred-gametype').value;
+
+  var isPrime = gametype.indexOf('prime') >= 0;
+  var isDiv   = gametype.indexOf('div') >= 0 && gametype.indexOf('nondiv') < 0;
+  var isWknd  = !isPrime; // prime time usually weekday
+  var phase   = week <= 6 ? 0 : week <= 12 ? 1 : 2;
+
+  // Weather features
+  var precip = 0, temp = 18, wind = 12, severity = 0;
+  if (weather === 'rain')  { precip = 8; severity = 24; }
+  if (weather === 'cold')  { temp = 3;  severity = 7; }
+  if (weather === 'hot')   { temp = 38; severity = 3; }
+
+  // Feature vector matching FEATURE_KEYS order
+  var featureMap = {
+    week_of_season: week,
+    is_weekend: isWknd ? 1 : 0,
+    is_prime_time: isPrime ? 1 : 0,
+    weather_severity: severity,
+    total_precip_mm: precip,
+    avg_temp_c: temp,
+    avg_wind_kmh: wind,
+    home_streak: streak,
+    prev_game_margin: 6,
+    is_divisional: isDiv ? 1 : 0,
+    opponent_win_pct: oppPct,
+    matchup_strength: oppPct * 0.55,
+    is_holiday_week: 0,
+    is_thanksgiving_week: 0,
+    season_phase_num: phase,
+  };
+
+  // MLB-specific feature additions (overlap keys reused; sport-specific added)
+  if (predSport === 'baseball') {
+    featureMap.game_of_season = Math.round(week / 18 * 162);  // map week slider → game #
+    featureMap.month = 4 + Math.round(week / 18 * 6);
+    featureMap.is_friday = isWknd ? 1 : 0;
+    featureMap.is_saturday = isWknd ? 1 : 0;
+    featureMap.is_night_game = isPrime ? 1 : 0;
+    featureMap.is_doubleheader = 0;
+    featureMap.our_win_pct_at_time = 0.5;
+    featureMap.holiday_is_holiday_week = 0;
+    featureMap.att_lag1_norm = 0;
+    featureMap.att_rolling5_norm = 0;
+  }
+
+  // Apply coefficients (team-mean adjusted → add team mean)
+  var teamMeans = sportModel.team_mean_attendance || {};
+  var teamMean  = teamMeans[teamKey] || 70000;
+  var capacity  = (REAL && REAL.teams && REAL.teams[teamKey] && REAL.teams[teamKey].team_info)
+                   ? REAL.teams[teamKey].team_info.venue_capacity : 70000;
+
+  var delta = lm.intercept || 0;
+  var factors = [];
+  Object.keys(featureMap).forEach(function(fk) {
+    var coeff = coeffs[fk] || 0;
+    var val   = featureMap[fk];
+    var effect = coeff * val;
+    delta += effect;
+    if (Math.abs(effect) > 100) {
+      factors.push({ label: (sportModel.feature_labels||{})[fk] || fk, effect: Math.round(effect) });
+    }
+  });
+
+  var predicted = Math.round(teamMean + delta);
+  var rmse = lm.rmse || 3000;
+  var ci = Math.round(rmse * 1.96);
+  var fillPct = Math.round(predicted / capacity * 100 * 10) / 10;
+
+  // Ghost risk
+  var ghost = 0.18;
+  if (weather === 'rain') ghost += 0.12;
+  if (weather === 'cold') ghost += 0.06;
+  if (weather === 'hot')  ghost += 0.08;
+  if (streak < -1)        ghost += Math.min(0.04 * Math.abs(streak), 0.20);
+  if (oppPct < 0.4)       ghost += 0.05;
+  ghost = Math.round(Math.min(ghost, 0.55) * 100);
+
+  // Show result
+  var resultEl = document.getElementById('pred-result');
+  if (resultEl) resultEl.style.display = 'block';
+  setEl('pred-out-att',   predicted.toLocaleString());
+  setEl('pred-out-fill',  fillPct + '%');
+  setEl('pred-out-ci',    (predicted - ci).toLocaleString() + ' – ' + (predicted + ci).toLocaleString());
+  setEl('pred-out-ghost', ghost + '%');
+
+  // Top factors
+  factors.sort(function(a,b){ return Math.abs(b.effect) - Math.abs(a.effect); });
+  var factorsEl = document.getElementById('pred-out-factors');
+  if (factorsEl) {
+    factorsEl.innerHTML = '<strong>Top factors:</strong> ' + factors.slice(0,4).map(function(f){
+      var col = f.effect > 0 ? GREEN : RED;
+      return '<span style="color:' + col + ';margin-right:0.8rem">' +
+             (f.effect > 0 ? '▲' : '▼') + ' ' + f.label + ' ' +
+             (f.effect > 0 ? '+' : '') + f.effect.toLocaleString() + ' fans</span>';
+    }).join('');
+  }
+}
+
+boot();

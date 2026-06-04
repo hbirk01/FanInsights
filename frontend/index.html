@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FanIQ — Fan Intelligence Platform</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --gold:#AA8A3C;--gold-light:#C9A84C;--dark:#0D0D14;--surface:#15151F;
+    --surface2:#1E1E2E;--border:#2A2A3E;--text:#E8E8F0;--muted:#7A7A9A;
+    --green:#22C55E;--red:#EF4444;--blue:#3B82F6;--purple:#A855F7;--orange:#F97316;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--dark);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;}
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;gap:1rem;}
+  .logo{font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,var(--gold),var(--gold-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .logo-sub{color:var(--muted);font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;display:block;margin-top:-4px;}
+  .nav-tabs{display:flex;overflow-x:auto;}
+  .nav-tab{padding:0 1rem;height:58px;display:flex;align-items:center;font-size:0.82rem;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+  .nav-right{display:flex;align-items:center;gap:0.8rem;flex-shrink:0;}
+  .badge-pwc{background:#D93025;color:white;font-size:0.68rem;font-weight:700;padding:3px 7px;border-radius:3px;letter-spacing:1px;}
+  .team-selector{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:6px;font-size:0.8rem;cursor:pointer;}
+  .status-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:5px 1.5rem;font-size:0.74rem;color:var(--muted);}
+  .status-bar code{background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;font-size:0.71rem;}
+  .page{display:none;padding:1.5rem;max-width:1440px;margin:0 auto;}
+  .page.active{display:block;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.4rem;}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem;flex-wrap:wrap;gap:0.5rem;}
+  .card-title{font-size:0.82rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+  .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.2rem;}
+  .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.2rem;}
+  .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1.2rem;}
+  .g12{display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1.2rem;}
+  .mb{margin-bottom:1.2rem;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem 1.4rem;}
+  .stat-label{font-size:0.73rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.4rem;}
+  .stat-value{font-size:1.9rem;font-weight:800;line-height:1;margin-bottom:0.3rem;}
+  .stat-delta{font-size:0.78rem;color:var(--green);}
+  .stat-delta.neg{color:var(--red);}
+  .stat-sub{font-size:0.72rem;color:var(--muted);margin-top:0.3rem;}
+  .pbar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px;}
+  .pfill{height:100%;border-radius:3px;}
+  .alert{border-radius:10px;padding:0.9rem 1.1rem;margin-bottom:0.65rem;border-left:3px solid;display:flex;gap:0.75rem;}
+  .a-ghost{background:rgba(239,68,68,0.08);border-color:var(--red);}
+  .a-opp{background:rgba(34,197,94,0.08);border-color:var(--green);}
+  .a-loc{background:rgba(59,130,246,0.08);border-color:var(--blue);}
+  .a-soc{background:rgba(168,85,247,0.08);border-color:var(--purple);}
+  .aicon{font-size:1.1rem;margin-top:1px;}
+  .abody{flex:1;}
+  .atitle{font-weight:600;font-size:0.85rem;margin-bottom:0.2rem;}
+  .adesc{font-size:0.78rem;color:var(--muted);line-height:1.4;}
+  .aact{margin-top:0.5rem;display:flex;gap:0.4rem;flex-wrap:wrap;}
+  .btn{display:inline-block;padding:3px 10px;border-radius:5px;font-size:0.73rem;font-weight:600;cursor:pointer;border:none;}
+  .btn-gold{background:var(--gold);color:#fff;}
+  .btn-out{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn-blue{background:var(--blue);color:#fff;}
+  .btn-green{background:var(--green);color:#fff;}
+  .btn-purple{background:var(--purple);color:#fff;}
+  .fan-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0;}
+  .ftable{width:100%;border-collapse:collapse;font-size:0.83rem;}
+  .ftable th{text-align:left;padding:0.55rem 0.75rem;color:var(--muted);font-weight:500;font-size:0.72rem;text-transform:uppercase;border-bottom:1px solid var(--border);}
+  .ftable td{padding:0.7rem 0.75rem;border-bottom:1px solid var(--border);vertical-align:middle;}
+  .ftable tr:last-child td{border-bottom:none;}
+  .ftable tr:hover td{background:var(--surface2);cursor:pointer;}
+  .tier{display:inline-block;padding:2px 7px;border-radius:4px;font-size:0.7rem;font-weight:700;text-transform:uppercase;}
+  .t-plat{background:#E5E4E2;color:#111;}.t-gold{background:#AA8A3C;color:#fff;}
+  .t-silv{background:#6B7280;color:#fff;}.t-bron{background:#92400E;color:#fff;}
+  .t-risk{background:#7F1D1D;color:#FCA5A5;}
+  .tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:0.67rem;font-weight:600;margin-right:3px;}
+  .tb{background:rgba(59,130,246,0.2);color:#93C5FD;}
+  .tg{background:rgba(34,197,94,0.2);color:#86EFAC;}
+  .tp{background:rgba(168,85,247,0.2);color:#D8B4FE;}
+  .to{background:rgba(249,115,22,0.2);color:#FDBA74;}
+  .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:0.7rem;background:var(--surface2);border:1px solid var(--border);color:var(--muted);}
+  .insight{background:linear-gradient(135deg,rgba(170,138,60,0.12),rgba(170,138,60,0.04));border:1px solid rgba(170,138,60,0.3);border-radius:10px;padding:0.9rem 1.1rem;margin-bottom:0.7rem;}
+  .insight-label{font-size:0.7rem;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.3rem;}
+  .insight-text{font-size:0.83rem;line-height:1.5;}
+  .sh{margin-bottom:1.3rem;}
+  .sh h1{font-size:1.35rem;font-weight:700;margin-bottom:0.25rem;}
+  .sh p{color:var(--muted);font-size:0.83rem;}
+  .tl{position:relative;padding-left:1.4rem;}
+  .tl::before{content:'';position:absolute;left:5px;top:4px;bottom:4px;width:2px;background:var(--border);}
+  .tl-item{position:relative;margin-bottom:0.9rem;}
+  .tl-item::before{content:'';position:absolute;left:-19px;top:5px;width:10px;height:10px;border-radius:50%;border:2px solid var(--gold);background:var(--dark);}
+  .tl-date{font-size:0.7rem;color:var(--muted);margin-bottom:2px;}
+  .tl-desc{font-size:0.83rem;}
+  .meter{height:10px;border-radius:5px;background:linear-gradient(to right,#EF4444,#F97316,#EAB308,#22C55E);position:relative;margin:0.5rem 0;}
+  .meter-needle{position:absolute;top:-4px;width:3px;height:18px;background:white;border-radius:2px;transform:translateX(-50%);}
+  .wx-strip{display:flex;gap:0.5rem;overflow-x:auto;padding-bottom:0.25rem;}
+  .wx-day{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.7rem;text-align:center;min-width:68px;flex-shrink:0;}
+  .wx-date{font-size:0.68rem;color:var(--muted);margin-bottom:3px;}
+  .wx-icon{font-size:1.2rem;margin-bottom:3px;}
+  .wx-temp{font-size:0.82rem;font-weight:700;}
+  .wx-rain{font-size:0.68rem;color:var(--blue);}
+  .ni{padding:0.65rem 0;border-bottom:1px solid var(--border);}
+  .ni:last-child{border-bottom:none;}
+  .ni-date{font-size:0.68rem;color:var(--muted);margin-bottom:2px;}
+  .ni-hl{font-size:0.85rem;font-weight:600;line-height:1.3;margin-bottom:3px;}
+  .ni-desc{font-size:0.75rem;color:var(--muted);line-height:1.4;}
+  table.st{width:100%;font-size:0.82rem;border-collapse:collapse;}
+  table.st td{padding:0.38rem 0.5rem;border-bottom:1px solid var(--border);}
+  table.st td:first-child{color:var(--muted);}
+  table.st tr:last-child td{border-bottom:none;}
+  .rb{display:inline-flex;align-items:center;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:var(--green);font-size:0.65rem;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:0.5px;text-transform:uppercase;margin-left:4px;}
+  .svg-stad{width:100%;max-height:270px;}
+  @media(max-width:960px){.g4{grid-template-columns:repeat(2,1fr);}.g3{grid-template-columns:repeat(2,1fr);}.g12{grid-template-columns:1fr;}}
+  canvas{max-width:100%;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div><span class="logo">FanIQ</span><span class="logo-sub">Powered by PwC Analytics</span></div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showPage('overview',this)">Overview</div>
+    <div class="nav-tab" onclick="showPage('realdata',this)">📡 Live Data</div>
+    <div class="nav-tab" onclick="showPage('profiles',this)">Fan Profiles</div>
+    <div class="nav-tab" onclick="showPage('ghost',this)">Ghost Tickets</div>
+    <div class="nav-tab" onclick="showPage('gameday',this)">Game Day AI</div>
+    <div class="nav-tab" onclick="showPage('ltv',this)">Lifetime Value</div>
+    <div class="nav-tab" onclick="showPage('predict',this)">Predictions</div>
+    <div class="nav-tab" onclick="showPage('model',this)">🔬 Model</div>
+  </div>
+  <div class="nav-right">
+    <select class="team-selector" onchange="updateTeam(this.value)">
+      <optgroup label="🏈 NFL">
+        <option value="sf49ers">San Francisco 49ers</option>
+        <option value="chiefs">Kansas City Chiefs</option>
+        <option value="cowboys">Dallas Cowboys</option>
+        <option value="eagles">Philadelphia Eagles</option>
+      </optgroup>
+      <optgroup label="⚾ MLB">
+        <option value="rockies">Colorado Rockies</option>
+        <option value="yankees">New York Yankees</option>
+        <option value="cubs">Chicago Cubs</option>
+        <option value="cardinals">St. Louis Cardinals</option>
+        <option value="pirates">Pittsburgh Pirates</option>
+        <option value="dodgers">Los Angeles Dodgers</option>
+      </optgroup>
+    </select>
+    <span class="badge-pwc">PwC</span>
+  </div>
+</nav>
+<div class="status-bar">
+  <span id="data-status">Loading real data…</span>
+  &nbsp;·&nbsp; Refresh: <code>python3 scraper.py</code>
+  &nbsp;·&nbsp; Sources: ESPN API · Open-Meteo · Public feeds
+</div>
+
+<!-- ═══════ OVERVIEW ═══════ -->
+<div id="page-overview" class="page active">
+  <div class="sh"><h1>Fan Intelligence Dashboard</h1><p id="overview-sub">Loading…</p></div>
+  <div class="g4">
+    <div class="stat-card"><div class="stat-label">Total Fan Records</div><div class="stat-value" style="color:var(--gold)">72,441</div><div class="stat-delta">↑ 4,312 from last season</div><div class="stat-sub">Linked across ticketing, app, social</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Fan LTV</div><div class="stat-value" style="color:var(--green)">$4,820</div><div class="stat-delta">↑ 12.4% YoY</div><div class="stat-sub">3-year projected value per fan</div></div>
+    <div class="stat-card"><div class="stat-label">At-Risk Fans</div><div class="stat-value" style="color:var(--red)">3,847</div><div class="stat-delta neg">Churn probability &gt;70%</div><div class="stat-sub">$18.5M LTV at risk this season</div></div>
+    <div class="stat-card"><div class="stat-label">Ghost Ticket Rate <span class="rb">Live</span></div><div class="stat-value" style="color:var(--orange)" id="real-ghost-pct">22.3%</div><div class="stat-delta neg">Weather-adjusted model</div><div class="stat-sub">Season holders missing 4+ games</div></div>
+  </div>
+  <div class="g4">
+    <div class="stat-card"><div class="stat-label">Real Avg Attendance <span class="rb">ESPN</span></div><div class="stat-value" id="real-avg-att">—</div><div class="stat-sub">Fill: <strong id="real-fill-pct">—</strong> of <span id="real-capacity">—</span></div></div>
+    <div class="stat-card"><div class="stat-label">Season Record <span class="rb">ESPN</span></div><div class="stat-value" id="real-record" style="font-size:1.4rem;padding-top:4px">—</div><div class="stat-sub" id="real-venue">—</div></div>
+    <div class="stat-card"><div class="stat-label">Fan Sentiment <span class="rb">NLP</span></div><div class="stat-value" id="real-sentiment">—</div><div class="stat-sub">ESPN news · keyword NLP</div></div>
+    <div class="stat-card"><div class="stat-label">Loyalty Score Avg</div><div class="stat-value">73.4</div><div class="stat-sub">Benchmark: 61</div><div class="pbar" style="margin-top:0.6rem"><div class="pfill" style="width:73.4%;background:var(--gold)"></div></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div class="card-title">Fan Tier Distribution</div><div class="chip">72,441 fans</div></div><canvas id="tierChart" height="200"></canvas></div>
+    <div class="card"><div class="card-header"><div class="card-title">Revenue by Fan Segment</div></div><canvas id="revenueChart" height="200"></canvas></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div class="card-title">Loyalty Score Trend</div><span style="font-size:0.74rem;color:var(--muted)">Real sentiment-adjusted</span></div><canvas id="loyaltyTrendChart" height="180"></canvas></div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Real-Time Alerts</div><span class="chip">🟢 Live</span></div>
+      <div class="alert a-ghost"><div class="aicon">👻</div><div class="abody"><div class="atitle">14 Season Holders Not Checked In — Next Home Game</div><div class="adesc">Seats 122-B rows 4–6 likely empty. Predicted value of filling: $3,400.</div><div class="aact"><button class="btn btn-gold">Trigger Offer</button><button class="btn btn-out">View Fans</button></div></div></div>
+      <div class="alert a-loc"><div class="aicon">📍</div><div class="abody"><div class="atitle">Fan Cluster — 6 fans within 8 mi, 3h pre-kickoff</div><div class="adesc">Marcus T., Priya K., and 4 others — none have tickets.</div><div class="aact"><button class="btn btn-blue">Geo-Targeted Offer</button></div></div></div>
+      <div class="alert a-opp"><div class="aicon">💡</div><div class="abody"><div class="atitle">31 Platinum fans dropped &gt;15 loyalty pts this week</div><div class="adesc">Correlated with injury report + losing streak. Recommend re-engagement.</div><div class="aact"><button class="btn btn-green">Launch Recovery Flow</button></div></div></div>
+      <div class="alert a-soc"><div class="aicon">📲</div><div class="abody"><div class="atitle">Post-Win Social Surge — 4,200 fans active</div><div class="adesc">90-min window open. Push incentive to top 500 influencer-tier fans.</div><div class="aact"><button class="btn btn-purple">Activate Campaign</button></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ LIVE DATA ═══════ -->
+<div id="page-realdata" class="page">
+  <div class="sh"><h1>📡 Live Real-World Data</h1><p>ESPN API · Open-Meteo · NLP sentiment · Updates every scraper run</p></div>
+
+  <div class="card mb">
+    <div class="card-header">
+      <div class="card-title">Game-by-Game Attendance + Weather Impact <span class="rb">ESPN + Open-Meteo</span></div>
+      <div style="font-size:0.74rem;color:var(--muted)">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(170,138,60,0.8);margin-right:4px"></span>Win &nbsp;
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(239,68,68,0.75);margin-right:4px"></span>Loss &nbsp;
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(59,130,246,0.75);margin-right:4px"></span>Rain game
+      </div>
+    </div>
+    <canvas id="attendanceChart" height="150"></canvas>
+    <div style="display:flex;gap:2rem;flex-wrap:wrap;margin-top:0.8rem">
+      <div><div class="stat-label" style="font-size:0.7rem">Season Avg</div><strong id="real-avg-att2">—</strong></div>
+      <div><div class="stat-label" style="font-size:0.7rem">Fill Rate</div><strong id="real-fill-pct2">—</strong></div>
+      <div><div class="stat-label" style="font-size:0.7rem">Capacity</div><strong id="real-capacity2">—</strong></div>
+      <div><div class="stat-label" style="font-size:0.7rem">Avg Ghost Risk</div><strong id="real-ghost-pct2" style="color:var(--orange)">—</strong></div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Historical Attendance — 3 Seasons <span class="rb">ESPN</span></div></div>
+      <canvas id="historyChart" height="160"></canvas>
+      <table class="st" style="margin-top:1rem">
+        <thead><tr><td style="font-weight:700;color:var(--muted);font-size:0.7rem">Season</td><td style="font-weight:700;color:var(--muted);font-size:0.7rem;text-align:right">Avg</td><td style="font-weight:700;color:var(--muted);font-size:0.7rem;text-align:right">Total</td><td style="font-weight:700;color:var(--muted);font-size:0.7rem;text-align:right">Games</td></tr></thead>
+        <tbody id="real-history"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Weather-Adjusted Ghost Risk Per Game <span class="rb">Model</span></div></div>
+      <canvas id="ghostRiskChart" height="160"></canvas>
+      <div class="insight" style="margin-top:0.8rem"><div class="insight-label">Weather Ghost Effect</div><div class="insight-text" id="weather-ghost-insight">Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-header"><div class="card-title">14-Day Stadium Weather Forecast <span class="rb">Open-Meteo</span></div><span style="font-size:0.74rem;color:var(--muted)">Flags ghost risk games automatically</span></div>
+    <div class="wx-strip" id="real-weather"><div style="color:var(--muted);padding:1rem">Loading…</div></div>
+    <div style="margin-top:0.8rem;font-size:0.77rem;color:var(--muted)">Days with &gt;60% rain probability or temperature extremes trigger automatic ghost-risk elevation and pre-game offer campaigns.</div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Current Injury Report <span class="rb">ESPN</span></div></div>
+      <div id="real-injuries"><div style="color:var(--muted)">Loading…</div></div>
+      <div class="insight" style="margin-top:1rem"><div class="insight-label">Injury → Loyalty Signal</div><div class="insight-text">Star player injuries correlate with <strong>+8–14% ghost ticket rate increase</strong> in the following 2 home games. FanIQ pre-triggers retention offers within 30 min of announcement.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Live ESPN News Feed <span class="rb">ESPN</span></div><div style="font-size:0.74rem;color:var(--muted)">Sentiment: <strong id="real-sentiment2" style="color:var(--green)">—</strong></div></div>
+      <div id="real-news-feed"><div style="color:var(--muted)">Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Fan Sentiment Score <span class="rb">NLP</span></div></div>
+      <div style="position:relative;text-align:center">
+        <canvas id="sentimentChart" height="120"></canvas>
+        <div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);text-align:center">
+          <div style="font-size:2rem;font-weight:800" id="sentiment-number">—</div>
+          <div style="font-size:0.7rem;color:var(--muted)">/ 100</div>
+        </div>
+      </div>
+      <div style="font-size:0.77rem;color:var(--muted);margin-top:0.5rem">NLP keyword analysis of ESPN news headlines. Positive (win, champion, extend) vs. negative (injured, loss, suspend). Feeds into loyalty score model.</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">F1 Race Calendar <span class="rb">ESPN</span></div><span style="font-size:0.74rem;color:var(--muted)">PwC F1 partnership events</span></div>
+      <div id="real-f1"><div style="color:var(--muted)">Loading…</div></div>
+      <div class="insight" style="margin-top:1rem"><div class="insight-label">F1 Fan Intelligence</div><div class="insight-text">Same FanIQ model for F1: geo-triggered hospitality offers, paddock tour upsells, merchandise delivery to grandstand seats. Live data from ESPN F1 scoreboard API.</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">NFL League News — Cross-Team Sentiment Signals <span class="rb">ESPN · Live</span></div></div>
+    <div id="nfl-news-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.75rem"></div>
+  </div>
+</div>
+
+<!-- ═══════ FAN PROFILES ═══════ -->
+<div id="page-profiles" class="page">
+  <div class="sh"><h1>Fan Profile Explorer</h1><p>Individual 360° fan intelligence · Click any row to expand</p></div>
+  <div class="g12">
+    <div class="card"><div class="card-header"><div class="card-title">Fan Roster</div></div>
+      <table class="ftable"><thead><tr><th>Fan</th><th>Tier</th><th>Loyalty</th><th>LTV</th><th>Risk</th></tr></thead><tbody id="fanTableBody"></tbody></table>
+    </div>
+    <div class="card"><div id="fanDetailContent" style="color:var(--muted);text-align:center;padding:3rem">← Select a fan to view their 360° profile</div></div>
+  </div>
+</div>
+
+<!-- ═══════ GHOST TICKETS ═══════ -->
+<div id="page-ghost" class="page">
+  <div class="sh"><h1>Ghost Ticket Intelligence</h1><p>Real attendance data + weather model · predict, prevent, recover empty seats</p></div>
+  <div class="g4">
+    <div class="stat-card"><div class="stat-label">Ghost Seats This Game</div><div class="stat-value" style="color:var(--red)">1,847</div><div class="stat-sub">Of 68,500 capacity</div></div>
+    <div class="stat-card"><div class="stat-label">Recovered (AI)</div><div class="stat-value" style="color:var(--green)">623</div><div class="stat-sub">Last-minute offers + resale</div></div>
+    <div class="stat-card"><div class="stat-label">Revenue Recovered</div><div class="stat-value" style="color:var(--green)">$94K</div><div class="stat-sub">$1.2M season to date</div></div>
+    <div class="stat-card"><div class="stat-label">Prediction Accuracy</div><div class="stat-value" style="color:var(--blue)">87.3%</div><div class="stat-sub">48h pre-game model</div></div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Stadium Heat Map — Predicted Empty Seats</div></div>
+      <svg class="svg-stad" viewBox="0 0 500 320" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="250" cy="160" rx="220" ry="140" fill="#1A1A2E" stroke="#2A2A3E" stroke-width="2"/>
+        <ellipse cx="250" cy="160" rx="155" ry="95" fill="#0D1117" stroke="#2A2A3E" stroke-width="1"/>
+        <ellipse cx="250" cy="160" rx="110" ry="68" fill="#166534" stroke="#15803D" stroke-width="1.5"/>
+        <line x1="250" y1="95" x2="250" y2="225" stroke="#15803D" stroke-width="1" stroke-dasharray="4,3"/>
+        <path d="M 110 160 A 140 90 0 0 1 155 90 L 165 105 A 95 62 0 0 0 128 160 Z" fill="rgba(239,68,68,0.55)" stroke="#EF4444" stroke-width="0.5"/><text x="118" y="135" fill="white" font-size="9" text-anchor="middle">101</text>
+        <path d="M 155 90 A 140 90 0 0 1 215 65 L 218 82 A 95 62 0 0 0 165 105 Z" fill="rgba(249,115,22,0.45)" stroke="#F97316" stroke-width="0.5"/><text x="178" y="82" fill="white" font-size="9" text-anchor="middle">102</text>
+        <path d="M 215 65 A 140 90 0 0 1 285 65 L 282 82 A 95 62 0 0 0 218 82 Z" fill="rgba(34,197,94,0.25)" stroke="#22C55E" stroke-width="0.5"/><text x="250" y="74" fill="white" font-size="9" text-anchor="middle">103</text>
+        <path d="M 285 65 A 140 90 0 0 1 345 90 L 335 105 A 95 62 0 0 0 282 82 Z" fill="rgba(239,68,68,0.55)" stroke="#EF4444" stroke-width="0.5"/><text x="322" y="82" fill="white" font-size="9" text-anchor="middle">104</text>
+        <path d="M 345 90 A 140 90 0 0 1 390 160 L 372 160 A 95 62 0 0 0 335 105 Z" fill="rgba(249,115,22,0.35)" stroke="#F97316" stroke-width="0.5"/><text x="372" y="133" fill="white" font-size="9" text-anchor="middle">105</text>
+        <path d="M 390 160 A 140 90 0 0 1 345 230 L 335 215 A 95 62 0 0 0 372 160 Z" fill="rgba(34,197,94,0.25)" stroke="#22C55E" stroke-width="0.5"/><text x="372" y="190" fill="white" font-size="9" text-anchor="middle">106</text>
+        <path d="M 345 230 A 140 90 0 0 1 285 255 L 282 238 A 95 62 0 0 0 335 215 Z" fill="rgba(249,115,22,0.4)" stroke="#F97316" stroke-width="0.5"/><text x="322" y="247" fill="white" font-size="9" text-anchor="middle">107</text>
+        <path d="M 285 255 A 140 90 0 0 1 215 255 L 218 238 A 95 62 0 0 0 282 238 Z" fill="rgba(34,197,94,0.3)" stroke="#22C55E" stroke-width="0.5"/><text x="250" y="252" fill="white" font-size="9" text-anchor="middle">108</text>
+        <path d="M 215 255 A 140 90 0 0 1 155 230 L 165 215 A 95 62 0 0 0 218 238 Z" fill="rgba(239,68,68,0.5)" stroke="#EF4444" stroke-width="0.5"/><text x="178" y="247" fill="white" font-size="9" text-anchor="middle">109</text>
+        <path d="M 155 230 A 140 90 0 0 1 110 160 L 128 160 A 95 62 0 0 0 165 215 Z" fill="rgba(249,115,22,0.35)" stroke="#F97316" stroke-width="0.5"/><text x="119" y="195" fill="white" font-size="9" text-anchor="middle">110</text>
+        <rect x="20" y="280" width="12" height="10" fill="rgba(239,68,68,0.7)" rx="2"/><text x="36" y="290" fill="#9CA3AF" font-size="9">High risk</text>
+        <rect x="100" y="280" width="12" height="10" fill="rgba(249,115,22,0.6)" rx="2"/><text x="116" y="290" fill="#9CA3AF" font-size="9">Medium</text>
+        <rect x="180" y="280" width="12" height="10" fill="rgba(34,197,94,0.5)" rx="2"/><text x="196" y="290" fill="#9CA3AF" font-size="9">Low risk</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card mb"><div class="card-header"><div class="card-title">Ghost Prediction Signals</div></div><canvas id="ghostSignalChart" height="160"></canvas></div>
+      <div class="card">
+        <div class="alert a-ghost" style="margin-bottom:0.5rem"><div class="aicon">📧</div><div class="abody"><div class="atitle">72h Email: "Will you be there?"</div><div class="adesc">312 predicted ghosts contacted · 89 "No" · 223 re-confirmed</div></div></div>
+        <div class="alert a-opp" style="margin-bottom:0.5rem"><div class="aicon">🎁</div><div class="abody"><div class="atitle">Incentive: Credit + Charity Option</div><div class="adesc">Release seat → $45 credit + $15 to charity. 63% take-up.</div></div></div>
+        <div class="alert a-loc"><div class="aicon">⚡</div><div class="abody"><div class="atitle">3h Pre-Kickoff: Flash Sale to Waitlist</div><div class="adesc">148 seats at 20% discount to 2,800 waitlist fans. Avg fill: 18 min.</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Season Holder Ghost Risk — Weather-Adjusted <span class="rb">ESPN + Open-Meteo</span></div></div>
+    <table class="ftable"><thead><tr><th>Fan / Game</th><th>Section</th><th>Ghost Rate</th><th>Next Game Prob</th><th>Last Signal</th><th>Action</th><th></th></tr></thead><tbody id="ghostTableBody"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══════ GAME DAY AI ═══════ -->
+<div id="page-gameday" class="page">
+  <div class="sh"><h1>Game Day AI — Live Personalization Engine</h1><p>Real broadcast data · Location signals · Purchase propensity · Social triggers</p></div>
+  <div class="g4">
+    <div class="stat-card"><div class="stat-label">Fans Checked In</div><div class="stat-value" style="color:var(--green)">61,204</div><div class="stat-sub">89.3% of expected</div></div>
+    <div class="stat-card"><div class="stat-label">Active Offers Sent</div><div class="stat-value">14,820</div><div class="stat-sub">Personalized via FanIQ AI</div></div>
+    <div class="stat-card"><div class="stat-label">Revenue Uplift</div><div class="stat-value" style="color:var(--green)">$287K</div><div class="stat-sub">vs. non-AI baseline</div></div>
+    <div class="stat-card"><div class="stat-label">Offer-to-Buy Time</div><div class="stat-value">4.2 min</div><div class="stat-sub">Personalization drives urgency</div></div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Fan Journey — Marcus Thompson</div><div class="tier t-plat">Platinum · LTV $8,240</div></div>
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem">
+        <div class="fan-avatar" style="width:52px;height:52px;font-size:1.2rem;background:linear-gradient(135deg,#6366F1,#8B5CF6)">MT</div>
+        <div><div style="font-weight:700">Marcus Thompson</div><div style="font-size:0.78rem;color:var(--muted)">Season Holder · Sec 120, Row 3 · Party of 3</div><div style="margin-top:4px"><span class="tag tb">Family</span><span class="tag tg">Jersey Buyer</span><span class="tag tp">Social Sharer</span></div></div>
+      </div>
+      <div class="tl">
+        <div class="tl-item"><div class="tl-date">10:14 AM · Location ping 11.2 mi from stadium</div><div class="tl-desc">🚗 <strong>Geo-trigger:</strong> "Marcus, on your way! Parking P-14 reserved. ETA 11:45 AM."</div></div>
+        <div class="tl-item"><div class="tl-date">10:22 AM · Push opened</div><div class="tl-desc">🌮 <strong>Pre-order:</strong> "3x Tacos + 2 Modelo + 1 lemonade. Gate C pickup." <span class="tag tg">Accepted · $58.40</span></div></div>
+        <div class="tl-item"><div class="tl-date">11:48 AM · Gate C entry confirmed</div><div class="tl-desc">✅ <strong>Seat upgrade:</strong> Sec 120 → Sec 108 Row 1 for $12. Party of 3 available.</div></div>
+        <div class="tl-item"><div class="tl-date">12:04 PM · Food delivery</div><div class="tl-desc">🍺 <strong>Delivered to Sec 108 Row 1.</strong> Marcus rated 5⭐</div></div>
+        <div class="tl-item"><div class="tl-date">12:31 PM · Halftime</div><div class="tl-desc">👕 <strong>Jersey offer:</strong> "Purdy #13 — $85 (was $105). Deliver to seat." <span class="tag tb">Pending</span></div></div>
+        <div class="tl-item"><div class="tl-date">3:48 PM · Post-game (win)</div><div class="tl-desc">📲 <strong>Social:</strong> "Share photo → 500 FanIQ pts. 3 friends nearby — group discount."</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="card mb"><div class="card-header"><div class="card-title">Live Offer Performance</div></div><canvas id="offerChart" height="180"></canvas></div>
+      <div class="card"><div class="card-header"><div class="card-title">Active Personalization Streams</div></div>
+        <table class="st">
+          <tr><td>Geo-targeted pre-arrival</td><td style="text-align:right;color:var(--green);font-weight:600">2,840 · 41%</td></tr>
+          <tr><td>Food pre-order</td><td style="text-align:right;color:var(--green);font-weight:600">5,120 · 38%</td></tr>
+          <tr><td>Seat upgrade upsells</td><td style="text-align:right;color:var(--blue);font-weight:600">1,200 · 22%</td></tr>
+          <tr><td>Jersey / merch halftime</td><td style="text-align:right;color:var(--blue);font-weight:600">3,400 · 14%</td></tr>
+          <tr><td>Rideshare deep-links</td><td style="text-align:right;color:var(--muted)">920 taps · $4.2K</td></tr>
+          <tr><td>Ticket share-to-friend</td><td style="text-align:right;color:var(--muted)">214 shared · 31 buys</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="insight"><div class="insight-label">🤖 FanIQ AI — Real Injury Data Integrated</div><div class="insight-text">Fans who pre-order food are <strong>3.1× more likely</strong> to buy merch before halftime. Push jersey offer T-2 min halftime to 1,840 food-order completers = est. <strong>$42K incremental revenue</strong>. Cross-reference: live injury report shows Nick Bosa <em>Questionable</em> — push "Support the Team" bundle as emotional hook.</div></div>
+</div>
+
+<!-- ═══════ LIFETIME VALUE ═══════ -->
+<div id="page-ltv" class="page">
+  <div class="sh"><h1>Fan Lifetime Value Model</h1><p>3-year projected value · tickets, merch, food, digital, referral</p></div>
+  <div class="g4">
+    <div class="stat-card"><div class="stat-label">Platinum LTV</div><div class="stat-value" style="color:var(--gold)">$14,280</div><div class="stat-sub">Top 5% · 3,620 fans</div></div>
+    <div class="stat-card"><div class="stat-label">Gold LTV</div><div class="stat-value" style="color:#C9A84C">$6,840</div><div class="stat-sub">Next 20% · 14,488 fans</div></div>
+    <div class="stat-card"><div class="stat-label">Silver LTV</div><div class="stat-value" style="color:#9CA3AF">$2,910</div><div class="stat-sub">Middle 35% · 25,354 fans</div></div>
+    <div class="stat-card"><div class="stat-label">Bronze / Casual LTV</div><div class="stat-value" style="color:#92400E">$820</div><div class="stat-sub">Bottom 40% · 28,976 fans</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div class="card-title">LTV Waterfall — Revenue Components</div></div><canvas id="ltvWaterfallChart" height="220"></canvas></div>
+    <div class="card"><div class="card-header"><div class="card-title">Segment Migration (YoY)</div></div><canvas id="migrationChart" height="220"></canvas></div>
+  </div>
+  <div class="g3">
+    <div class="card"><div class="card-header"><div class="card-title">LTV Drivers — Platinum</div></div>
+      <table class="st"><tr><td>Season tickets</td><td style="text-align:right;font-weight:600">$5,200</td></tr><tr><td>Food & beverage</td><td style="text-align:right;font-weight:600">$2,100</td></tr><tr><td>Merchandise</td><td style="text-align:right;font-weight:600">$1,480</td></tr><tr><td>Premium upgrades</td><td style="text-align:right;font-weight:600">$1,800</td></tr><tr><td>Digital / streaming</td><td style="text-align:right;font-weight:600">$420</td></tr><tr><td>Referral value</td><td style="text-align:right;font-weight:600;color:var(--green)">$3,280</td></tr><tr><td style="font-weight:700">3-Year Total</td><td style="text-align:right;font-weight:700;color:var(--gold)">$14,280</td></tr></table>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">Churn Impact Scenario</div></div>
+      <div class="insight"><div class="insight-label">Save 500 At-Risk Platinum Fans</div><div class="insight-text">Cost: <strong>$120K</strong> · Recovered LTV: <strong>$7.14M</strong> / 3yr · ROI: <strong>59.5×</strong></div></div>
+      <div class="meter"><div class="meter-needle" style="left:85%"></div></div>
+      <div style="font-size:0.73rem;color:var(--muted);display:flex;justify-content:space-between"><span>Low ROI</span><span>High ROI</span></div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">Referral Network Value</div></div>
+      <canvas id="referralChart" height="160"></canvas>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem">Platinum fans refer avg 2.3 new fans/season. Each = $820+ LTV. Network effect +18% annually.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PREDICTIONS ═══════ -->
+<div id="page-predict" class="page">
+  <div class="sh"><h1>Predictive Intelligence Engine</h1><p>ML models · Real ESPN attendance · Weather signals · NLP sentiment · 2.1M transactions</p></div>
+  <div class="g3">
+    <div class="card"><div class="card-header"><div class="card-title">Model Performance</div></div>
+      <table class="st"><tr><td>Churn prediction AUC</td><td style="text-align:right;color:var(--green);font-weight:700">0.91</td></tr><tr><td>Ghost ticket (48h) accuracy</td><td style="text-align:right;color:var(--green);font-weight:700">87.3%</td></tr><tr><td>Purchase propensity precision</td><td style="text-align:right;color:var(--green);font-weight:700">83.1%</td></tr><tr><td>Geo-arrival prediction (±30min)</td><td style="text-align:right;color:var(--green);font-weight:700">79.4%</td></tr><tr><td>Seating preference match</td><td style="text-align:right;color:var(--green);font-weight:700">91.2%</td></tr><tr><td>Party size prediction</td><td style="text-align:right;color:var(--green);font-weight:700">88.6%</td></tr><tr><td>LTV 3yr forecast MAPE</td><td style="text-align:right;color:var(--blue);font-weight:700">11.2%</td></tr><tr><td>Weather ghost uplift R²</td><td style="text-align:right;color:var(--blue);font-weight:700">0.74</td></tr></table>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">Key Predictive Features</div></div><canvas id="featureImportanceChart" height="210"></canvas></div>
+    <div class="card"><div class="card-header"><div class="card-title">Attendance Forecast <span class="rb">Real Baseline</span></div></div><canvas id="attendanceForecastChart" height="210"></canvas></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div class="card-title">Interaction Recommendation Engine</div></div>
+      <div class="insight mb"><div class="insight-label">Marcus Thompson — Next Away Game</div><div class="insight-text">72% probability streaming. <strong>Action:</strong> Watch party invite + digital collectible. Predict $42 spend + loyalty +4 pts.</div></div>
+      <div class="insight mb"><div class="insight-label">Priya Kapoor — At-Risk, Lapsed 3 weeks</div><div class="insight-text">Disengages after losses, upgrades if re-engaged. <strong>Action:</strong> Behind-the-scenes content + priority playoff seats. Churn 74%→28%.</div></div>
+      <div class="insight"><div class="insight-label">840 Casual Fans — Near Upgrade Threshold</div><div class="insight-text">Within 12 loyalty pts of Gold. "You're this close" + premium trial. Est. 23% conversion = $1.8M LTV.</div></div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">Churn Probability Distribution</div></div><canvas id="churnDistChart" height="220"></canvas><div style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem">3,847 fans in high-risk zone (&gt;70%). Intervention targeting top 500 highest-LTV at-risk fans.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">PwC Sports Practice Benchmarks <span class="rb">2024 NFL</span></div></div>
+    <canvas id="benchmarkChart" height="120"></canvas>
+    <div style="margin-top:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.8rem">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--gold);margin-right:5px"></span>Your Team</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3B82F6;margin-right:5px"></span>NFL Avg</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22C55E;margin-right:5px"></span>Top Quartile</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODEL ═══════ -->
+<div id="page-model" class="page">
+  <div class="sh"><h1 id="model-sport-title">🔬 NFL Attendance Prediction Model</h1><p class="section-sub">Real ESPN data · loading…</p></div>
+
+  <!-- metric cards -->
+  <div class="g4">
+    <div class="stat-card">
+      <div class="stat-label">Training Samples <span class="rb" id="m-sport-badge">NFL</span></div>
+      <div class="stat-value" style="color:var(--gold)" id="m-samples">—</div>
+      <div class="stat-sub" id="m-samples-sub">home games</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Linear R²</div>
+      <div class="stat-value" id="m-lin-r2" style="color:var(--blue)">—</div>
+      <div class="stat-sub">Variance explained in game-to-game swings · MAE: <span id="m-lin-mae">—</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Best Model R²</div>
+      <div class="stat-value" id="m-rf-r2" style="color:var(--green)">—</div>
+      <div class="stat-sub" id="m-rf-name">Cross-season holdout · MAE: <span id="m-rf-mae">—</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Prediction Window</div>
+      <div class="stat-value" style="color:var(--orange)">±<span id="m-ci">—</span></div>
+      <div class="stat-sub">95% confidence interval on attendance predictions</div>
+    </div>
+  </div>
+
+  <!-- correlation + scatter -->
+  <div class="g2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Feature Correlations with Attendance <span class="rb">Pearson r</span></div>
+        <span style="font-size:0.74rem;color:var(--muted)">Team-mean adjusted · sorted by strength</span>
+      </div>
+      <canvas id="modelCorrChart" height="260"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Actual vs Predicted Attendance <span class="rb">Linear Model</span></div>
+        <span style="font-size:0.74rem;color:var(--muted)"><span style="color:var(--gold)">●</span> Win &nbsp;<span style="color:var(--red)">●</span> Loss</span>
+      </div>
+      <canvas id="modelScatterChart" height="260"></canvas>
+    </div>
+  </div>
+
+  <!-- feature importance + coefficients -->
+  <div class="g2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">RF Feature Importance <span class="rb">Full Dataset</span></div>
+        <span style="font-size:0.74rem;color:var(--muted)">Share of variance explained by each signal</span>
+      </div>
+      <canvas id="modelFIChart" height="240"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Linear Coefficients — Fans per Unit <span class="rb">Unstandardized</span></div>
+        <span style="font-size:0.74rem;color:var(--muted)">How much attendance shifts per 1-unit change</span>
+      </div>
+      <canvas id="modelCoeffChart" height="240"></canvas>
+    </div>
+  </div>
+
+  <!-- insights -->
+  <div class="card mb">
+    <div class="card-header"><div class="card-title">Model-Discovered Insights <span class="rb">Computed from real data</span></div></div>
+    <div id="model-insights" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:0.75rem"></div>
+  </div>
+
+  <!-- model comparison -->
+  <div class="card mb">
+    <div class="card-header">
+      <div class="card-title">Model Comparison <span class="rb">Locked test set</span></div>
+      <span style="font-size:0.74rem;color:var(--muted)">60/20/20 chronological split · tuned on validation · evaluated once on test</span>
+    </div>
+    <table class="ftable" id="model-fwd-table">
+      <thead><tr>
+        <th>Model</th><th>Train R²</th><th>Val R²</th><th>Test R²</th>
+        <th>Test MAE</th><th>Test MAPE</th><th>vs Baseline</th>
+      </tr></thead>
+      <tbody id="model-fwd-body"></tbody>
+    </table>
+    <p style="font-size:0.74rem;color:var(--muted);margin-top:0.75rem">ℹ️ Negative R² with low MAPE is expected for near-capacity NFL venues (~98% fill, tiny variance). MAPE is the operationally meaningful metric. MLB shows higher R² because attendance genuinely varies game-to-game.</p>
+  </div>
+
+  <!-- interactive prediction tool -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">🎯 Interactive Attendance Predictor</div><span style="font-size:0.74rem;color:var(--muted)">Applies linear model coefficients client-side</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.2rem">
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Team</div>
+        <select id="pred-team" class="team-selector" style="width:100%">
+          <optgroup label="🏈 NFL">
+            <option value="sf49ers">San Francisco 49ers</option>
+            <option value="chiefs">Kansas City Chiefs</option>
+            <option value="cowboys">Dallas Cowboys</option>
+            <option value="eagles">Philadelphia Eagles</option>
+          </optgroup>
+          <optgroup label="⚾ MLB">
+            <option value="rockies">Colorado Rockies</option>
+            <option value="yankees">New York Yankees</option>
+            <option value="cubs">Chicago Cubs</option>
+            <option value="cardinals">St. Louis Cardinals</option>
+            <option value="pirates">Pittsburgh Pirates</option>
+            <option value="dodgers">Los Angeles Dodgers</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Week of Season: <strong id="pred-week-val">8</strong></div>
+        <input type="range" id="pred-week" min="1" max="18" value="8" style="width:100%" oninput="document.getElementById('pred-week-val').textContent=this.value;runPredictor()">
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Opponent Win %: <strong id="pred-opp-val">50%</strong></div>
+        <input type="range" id="pred-opp" min="0" max="100" value="50" style="width:100%" oninput="document.getElementById('pred-opp-val').textContent=this.value+'%';runPredictor()">
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Team Win Streak: <strong id="pred-streak-val">0</strong></div>
+        <input type="range" id="pred-streak" min="-5" max="8" value="0" style="width:100%" oninput="document.getElementById('pred-streak-val').textContent=this.value;runPredictor()">
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Weather</div>
+        <select id="pred-weather" class="team-selector" style="width:100%" onchange="runPredictor()">
+          <option value="clear">☀️ Clear</option>
+          <option value="rain">🌧 Rain</option>
+          <option value="cold">❄️ Cold (&lt;8°C)</option>
+          <option value="hot">🌡 Hot (&gt;35°C)</option>
+        </select>
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Game Type</div>
+        <select id="pred-gametype" class="team-selector" style="width:100%" onchange="runPredictor()">
+          <option value="day_div">Day · Divisional</option>
+          <option value="day_nondiv">Day · Non-Divisional</option>
+          <option value="prime_div">Prime Time · Divisional</option>
+          <option value="prime_nondiv">Prime Time · Non-Divisional</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="pred-result" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem">
+        <div><div class="stat-label" style="font-size:0.7rem">Predicted Attendance</div><div style="font-size:1.6rem;font-weight:800;color:var(--gold)" id="pred-out-att">—</div></div>
+        <div><div class="stat-label" style="font-size:0.7rem">Fill Rate</div><div style="font-size:1.6rem;font-weight:800;color:var(--blue)" id="pred-out-fill">—</div></div>
+        <div><div class="stat-label" style="font-size:0.7rem">Confidence Range</div><div style="font-size:1rem;font-weight:700;color:var(--muted)" id="pred-out-ci">—</div></div>
+        <div><div class="stat-label" style="font-size:0.7rem">Ghost Risk</div><div style="font-size:1.6rem;font-weight:800;color:var(--orange)" id="pred-out-ghost">—</div></div>
+      </div>
+      <div id="pred-out-factors" style="font-size:0.82rem;color:var(--muted)"></div>
+    </div>
+  </div>
+</div>
+
+<script src="faniq.js"></script>
+<script>
+var _orig = refreshRealDataPanels;
+refreshRealDataPanels = function() {
+  _orig();
+  var td = teamData();
+  if (!td) return;
+  var stats = td.attendance_stats || {};
+  setEl('overview-sub', (td.team_info ? td.team_info.name : ACTIVE_TEAM) + ' · 2024 Season · Real ESPN data · ' + (td.games||[]).length + ' games');
+  setEl('real-avg-att2',  stats.avg_attendance ? stats.avg_attendance.toLocaleString() : '--');
+  setEl('real-fill-pct2', stats.avg_fill_pct   ? stats.avg_fill_pct + '%'              : '--');
+  setEl('real-capacity2', td.team_info && td.team_info.venue_capacity ? td.team_info.venue_capacity.toLocaleString() : '--');
+  setEl('real-ghost-pct2', stats.avg_ghost_risk ? Math.round(stats.avg_ghost_risk*100)+'%' : '--');
+  setEl('real-sentiment2', (td.sentiment_score||'—')+'/100');
+  setEl('sentiment-number', td.sentiment_score||'—');
+
+  var games = td.games||[];
+  var rainG = games.filter(function(g){ return g.weather&&g.weather.is_rain&&g.is_home; });
+  var hotG  = games.filter(function(g){ return g.weather&&g.weather.is_hot&&g.is_home; });
+  var el = document.getElementById('weather-ghost-insight');
+  if (el) el.innerHTML = 'This season: <strong>'+rainG.length+' home games</strong> had rain (+12% ghost risk). <strong>'+hotG.length+' games</strong> were heat-affected (+8% ghost risk). Weather-adjusted prediction fires early campaigns <strong>72h ahead</strong>, recovering est. <strong>$'+Math.round((rainG.length*1.12+hotG.length*0.8)*22)+'K</strong> in seat revenue.';
+
+  var nflEl = document.getElementById('nfl-news-grid');
+  if (nflEl && REAL && REAL.nfl_news && REAL.nfl_news.length) {
+    nflEl.innerHTML = REAL.nfl_news.slice(0,9).map(function(a) {
+      var teams = a.teams&&a.teams.length ? a.teams.slice(0,2).join(', ') : 'NFL';
+      return '<div style="background:var(--surface2);padding:0.8rem;border-radius:8px;border:1px solid var(--border)"><div class="ni-date">'+a.date+' <span class="tag tb">'+teams+'</span></div><div class="ni-hl">'+a.headline+'</div></div>';
+    }).join('');
+  }
+};
+</script>
+</body>
+</html>

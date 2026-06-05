@@ -643,42 +643,76 @@ function initCharts() {
   });
 
   // Feature importance
+  // Feature importance — per-team Pearson |r| computed from real game data
+  var fiAtts  = homeGames.map(function(g){ return g.attendance; });
+  var fiFeatDefs = [
+    { label:'Week / Game #',        fn:function(g){ return g.week_of_season||g.game_of_season||0; } },
+    { label:'Opponent Strength',     fn:function(g){ return g.opponent_win_pct||0; } },
+    { label:'Prime Time',            fn:function(g){ return g.is_prime_time?1:0; } },
+    { label:'Weather Severity',      fn:function(g){ return g.weather_severity||0; } },
+    { label:'Win Streak',            fn:function(g){ return g.home_streak||0; } },
+    { label:'Divisional Rivalry',    fn:function(g){ return g.is_divisional?1:0; } },
+    { label:'Weekend Game',          fn:function(g){ return g.is_weekend?1:0; } },
+    { label:'Matchup Strength',      fn:function(g){ return g.matchup_strength||0; } },
+    { label:'Rain',                  fn:function(g){ return (g.weather&&g.weather.is_rain)?1:0; } },
+  ];
+  var fiRealPairs = [];
+  if (homeGames.length >= 5) {
+    fiFeatDefs.forEach(function(fd){
+      var xs = homeGames.map(fd.fn);
+      var r = pearsonR(xs, fiAtts);
+      if (r !== null) fiRealPairs.push({ label: fd.label, val: Math.abs(r) });
+    });
+    fiRealPairs.sort(function(a,b){ return b.val - a.val; });
+  }
+  var fiLabels = fiRealPairs.length ? fiRealPairs.map(function(p){ return p.label; }) : ['Attendance Freq','Purchase History','App Engagement','Social Activity','Location Signals','Ticket Resale','Team Performance'];
+  var fiValsP  = fiRealPairs.length ? fiRealPairs.map(function(p){ return +(p.val*100).toFixed(1); }) : [31,24,18,12,8,5,2];
+
   mk('featureImportanceChart', {
     type: 'bar',
-    data: {
-      labels: ['Attendance freq','Purchase history','App engagement','Social activity','Location signals','Ticket resale','Team performance'],
-      datasets: [{ data:[31,24,18,12,8,5,2], backgroundColor:GOLD }]
-    },
+    data: { labels: fiLabels, datasets: [{ data: fiValsP, backgroundColor: GOLD }] },
     options: {
       indexAxis:'y',
-      plugins:{ legend:{ display:false } },
-      scales: { x:Object.assign({},tickColor(),{ ticks:{ callback:function(v){ return v+'%'; } } }), y:tickColor() }
+      plugins:{ legend:{ display:false },
+        tooltip:{ callbacks:{ label:function(ctx){ return '|r| = ' + (ctx.parsed.x/100).toFixed(3); } } } },
+      scales: { x:Object.assign({},tickColor(),{ ticks:{ callback:function(v){ return v.toFixed(0)+'%'; } } }), y:tickColor() }
     }
   });
 
-  // Attendance forecast (real baseline + projection)
-  var forecastLabels = ['Wk8','Wk9','Wk10','Wk11','Wk12','Wk13(F)','Wk14(F)','Wk15(F)'];
-  var forecastActual = homeGames.length >= 5
-    ? homeGames.slice(-5).map(function(g){ return g.attendance; }).concat([null, null, null])
+  // Attendance forecast — real team data, sport-aware labels
+  var forecastSport = MLB_TEAMS.has(ACTIVE_TEAM) ? 'baseball' : 'football';
+  var labelPrefix   = forecastSport === 'baseball' ? 'G' : 'Wk';
+  var lastGames     = homeGames.slice(-5);
+  var lastGameNums  = lastGames.map(function(g,i){ return labelPrefix + (g.week_of_season||g.game_of_season||(i+1)); });
+  var forecastLabels = lastGameNums.concat([labelPrefix+'(F1)', labelPrefix+'(F2)', labelPrefix+'(F3)']);
+  var forecastActual = lastGames.length >= 3
+    ? lastGames.map(function(g){ return g.attendance; }).concat([null, null, null])
     : [67400,68100,65800,66900,61200,null,null,null];
   var lastReal = forecastActual.filter(function(v){ return v; }).pop() || 65000;
-  var forecastFwd = forecastActual.map(function(v,i){ return i>=4 ? Math.round(lastReal * (1+i*0.008)) : null; });
+  var meanAtt  = fiAtts.length ? fiAtts.reduce(function(a,b){return a+b;},0)/fiAtts.length : lastReal;
+  // Forecast: mean-reverting toward team's seasonal average
+  var forecastFwd = forecastActual.map(function(v,i){
+    if (i < lastGames.length) return null;
+    return Math.round(lastReal + (meanAtt - lastReal) * 0.4 * (i - lastGames.length + 1));
+  });
+
+  var forecastMin = Math.min.apply(null, forecastActual.filter(Boolean).concat(forecastFwd.filter(Boolean))) - 3000;
 
   mk('attendanceForecastChart', {
     type: 'line',
     data: {
       labels: forecastLabels,
       datasets: [
-        { label:'Actual',   data:forecastActual, borderColor:GREEN, tension:0.3, pointRadius:4 },
-        { label:'Forecast', data:forecastFwd,    borderColor:GOLD, borderDash:[5,4], tension:0.3, pointRadius:4 },
-        { label:'Capacity', data:forecastActual.map(function(){ return stats.avg_attendance ? Math.round(stats.avg_attendance*1.04) : 68500; }), borderColor:'#374151', borderDash:[2,4], pointRadius:0 }
+        { label:'Actual',   data:forecastActual, borderColor:GREEN, tension:0.3, pointRadius:4, fill:false },
+        { label:'Forecast', data:forecastFwd,    borderColor:GOLD,  borderDash:[5,4], tension:0.3, pointRadius:4, fill:false },
+        { label:'Season avg', data:forecastLabels.map(function(){ return Math.round(meanAtt); }), borderColor:'#374151', borderDash:[2,4], pointRadius:0, fill:false }
       ]
     },
     options: {
       plugins:{ legend:{ labels:{ color:MUTED, font:{size:10} } } },
       scales: {
         x: tickColor(),
-        y: Object.assign({ min:55000 }, tickColor(), { ticks:{ callback:function(v){ return (v/1000).toFixed(0)+'K'; } } })
+        y: Object.assign({ min: forecastMin }, tickColor(), { ticks:{ callback:function(v){ return (v/1000).toFixed(0)+'K'; } } })
       }
     }
   });
@@ -947,19 +981,7 @@ function renderModelTab() {
     : (lm.rmse ? Math.round(lm.rmse * 1.96) : null);
   setEl('m-ci', teamCi ? teamCi.toLocaleString() : '—');
 
-  // ── Pearson r correlations computed from this team's real game data ─────────
-  // Computes per-team correlation between each feature and attendance
-  function pearsonR(xs, ys) {
-    var n = xs.length;
-    if (n < 5) return null;
-    var mx = xs.reduce(function(a,b){return a+b;},0)/n;
-    var my = ys.reduce(function(a,b){return a+b;},0)/n;
-    var num = 0, dx = 0, dy = 0;
-    for (var i=0; i<n; i++) { num += (xs[i]-mx)*(ys[i]-my); dx += (xs[i]-mx)*(xs[i]-mx); dy += (ys[i]-my)*(ys[i]-my); }
-    var denom = Math.sqrt(dx) * Math.sqrt(dy);
-    return denom ? num / denom : 0;
-  }
-
+  // ── Per-team correlations + OLS estimates from real game data ────────────────
   var featDefs = [
     { key:'week_of_season',    label:'Week of Season',     fn:function(g){ return g.week_of_season||g.game_of_season||0; } },
     { key:'opponent_win_pct',  label:'Opponent Win %',      fn:function(g){ return g.opponent_win_pct||0; } },
@@ -1046,25 +1068,72 @@ function renderModelTab() {
     }
   });
 
-  // ── RF feature importance (league-wide model) ──────────────────────────────
-  var fi = rf.feature_importance || lm.coefficients || {};
-  var fiKeys = Object.keys(fi).sort(function(a,b){ return Math.abs(fi[b]) - Math.abs(fi[a]); }).slice(0, 12);
+  // ── Feature importance: per-team |Pearson r| sorted by strength ────────────
+  // Uses this team's real game data, not league-wide RF importances
+  var fiPairs = teamCorrPairs.length ? teamCorrPairs : (function(){
+    var fi = rf.feature_importance || {};
+    return Object.keys(fi).slice(0,10).map(function(k){ return { label:flabels[k]||k, r:fi[k] }; });
+  })();
+  var fiLabel = teamCorrPairs.length ? teamName + ' · Feature Correlation Strength' : 'League-wide RF Importance';
   destroyChart('modelFIChart');
   chartInstances['modelFIChart'] = new Chart(document.getElementById('modelFIChart'), {
     type: 'bar',
-    data: { labels: fiKeys.map(function(k){ return flabels[k]||k; }), datasets: [{ data: fiKeys.map(function(k){ return Math.abs(fi[k]); }), backgroundColor: GOLD, borderWidth: 0 }] },
-    options: { indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } }, y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } } } }
+    data: { labels: fiPairs.map(function(p){ return p.label; }),
+            datasets: [{ data: fiPairs.map(function(p){ return Math.abs(p.r); }), backgroundColor: GOLD, borderWidth: 0 }] },
+    options: {
+      indexAxis:'y',
+      plugins:{ legend:{ display:false },
+        tooltip:{ callbacks:{ label:function(ctx){ return '|r| = ' + ctx.parsed.x.toFixed(3) + ' (' + teamName + ')'; } } } },
+      scales:{ x:{ ticks:{ color:MUTED, font:{size:10}, callback:function(v){ return v.toFixed(2); } }, grid:{ color:GRID } }, y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } } }
+    }
   });
+  // Update chart title label
+  var fiCardTitle = document.querySelector('#page-model .card-title');
+  if (fiCardTitle && fiCardTitle.textContent.indexOf('Feature') >= 0) {
+    // find the right card title
+  }
+  var fiHeaders = document.querySelectorAll('#page-model .card-title');
+  fiHeaders.forEach(function(h){ if (h.textContent.indexOf('RF Feature') >= 0) h.textContent = fiLabel; });
 
-  // ── linear coefficients (league-wide) ─────────────────────────────────────
-  var coeffs = lm.coefficients || {};
-  var cKeys  = Object.keys(coeffs).sort(function(a,b){ return Math.abs(coeffs[b]) - Math.abs(coeffs[a]); }).slice(0, 12);
-  var cVals  = cKeys.map(function(k){ return coeffs[k]; });
+  // ── Linear coefficients: per-team OLS estimate (β = r × σy / σx) ──────────
+  // Univariate OLS gives team-specific directional impact per unit of each feature
+  var stdY = stdDev(atts);
+  var olsPairs = featDefs.map(function(fd) {
+    var xs = teamGames.map(fd.fn);
+    var r  = pearsonR(xs, atts);
+    if (r === null) return null;
+    var sx = stdDev(xs);
+    var beta = sx > 0.001 ? r * stdY / sx : 0;
+    return { label: fd.label, beta: beta };
+  }).filter(Boolean).sort(function(a,b){ return Math.abs(b.beta) - Math.abs(a.beta); });
+
+  // Fall back to league coefficients if no team data
+  var useLeagueCoeffs = !olsPairs.length;
+  if (useLeagueCoeffs) {
+    var coeffs = lm.coefficients || {};
+    var cKeys  = Object.keys(coeffs).sort(function(a,b){ return Math.abs(coeffs[b]) - Math.abs(coeffs[a]); }).slice(0, 10);
+    olsPairs = cKeys.map(function(k){ return { label: flabels[k]||k, beta: coeffs[k] }; });
+  }
+  var coeffLabel = useLeagueCoeffs ? 'League-wide Linear Coefficients' : teamName + ' · Estimated Fans per Unit';
+  var cVals2 = olsPairs.map(function(p){ return p.beta; });
   destroyChart('modelCoeffChart');
   chartInstances['modelCoeffChart'] = new Chart(document.getElementById('modelCoeffChart'), {
     type: 'bar',
-    data: { labels: cKeys.map(function(k){ return flabels[k]||k; }), datasets: [{ data: cVals, backgroundColor: cVals.map(function(v){ return v>=0?'rgba(34,197,94,0.75)':'rgba(239,68,68,0.75)'; }), borderWidth:0 }] },
-    options: { indexAxis:'y', plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ var v=ctx.parsed.x; return (v>0?'+':'')+Math.round(v).toLocaleString()+' fans per unit'; } } } }, scales:{ x:{ ticks:{ color:MUTED, font:{size:10}, callback:function(v){return (v>0?'+':'')+Math.round(v);} }, grid:{ color:GRID } }, y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } } } }
+    data: { labels: olsPairs.map(function(p){ return p.label; }),
+            datasets: [{ data: cVals2, backgroundColor: cVals2.map(function(v){ return v>=0?'rgba(34,197,94,0.75)':'rgba(239,68,68,0.75)'; }), borderWidth:0 }] },
+    options: {
+      indexAxis:'y',
+      plugins:{ legend:{ display:false },
+        tooltip:{ callbacks:{ label:function(ctx){
+          var v = ctx.parsed.x;
+          return (v>0?'+':'')+Math.round(v).toLocaleString()+' fans per unit (' + teamName + ')';
+        }}}
+      },
+      scales:{
+        x:{ ticks:{ color:MUTED, font:{size:10}, callback:function(v){return (v>0?'+':'')+Math.round(v);} }, grid:{ color:GRID } },
+        y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } }
+      }
+    }
   });
 
   // ── team-specific insights derived from real game data ─────────────────────
@@ -1105,6 +1174,24 @@ function renderModelTab() {
 }
 
 // ── team-specific model insights from real game data ──────────────────────────
+// ── shared stat helpers (used in renderModelTab + initCharts) ─────────────────
+function pearsonR(xs, ys) {
+  var n = xs.length;
+  if (n < 5) return null;
+  var mx = xs.reduce(function(a,b){return a+b;},0)/n;
+  var my = ys.reduce(function(a,b){return a+b;},0)/n;
+  var num=0, dx=0, dy=0;
+  for (var i=0;i<n;i++){num+=(xs[i]-mx)*(ys[i]-my);dx+=(xs[i]-mx)*(xs[i]-mx);dy+=(ys[i]-my)*(ys[i]-my);}
+  var denom = Math.sqrt(dx)*Math.sqrt(dy);
+  return denom ? num/denom : 0;
+}
+function stdDev(arr) {
+  if (!arr.length) return 1;
+  var mean = arr.reduce(function(a,b){return a+b;},0)/arr.length;
+  var v = arr.reduce(function(s,x){return s+(x-mean)*(x-mean);},0)/arr.length;
+  return Math.sqrt(v)||1;
+}
+
 function buildTeamInsights(games, teamName) {
   if (games.length < 5) return [];
   var ins = [];

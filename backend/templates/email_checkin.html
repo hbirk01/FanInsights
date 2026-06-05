@@ -48,41 +48,40 @@
 
   <div class="section">
 
-    <div class="step-row">
-      <div class="step-icon">🍺</div>
-      <div>
-        <div class="step-label">Your food order is being prepared</div>
-        <div class="step-sub">{{food_order}} · On its way to {{section}} {{row}} in ~{{food_eta}} min</div>
-      </div>
-      <div class="step-status" style="color:#22C55E;">🟢 On the way</div>
-    </div>
-
-    <div class="step-row">
-      <div class="step-icon">🅿️</div>
-      <div>
-        <div class="step-label">Parking confirmed</div>
-        <div class="step-sub">Lot P-14 · Exit via Gate C after the game</div>
-      </div>
-      <div class="step-status" style="color:#3B82F6;">✓ Set</div>
-    </div>
-
-    <div class="step-row">
-      <div class="step-icon">📲</div>
-      <div>
-        <div class="step-label">Social rewards are live</div>
-        <div class="step-sub">Post #GoNiners tonight → earn 500 FanIQ points ($15 value)</div>
-      </div>
-      <div class="step-status" style="color:#22C55E;">Active</div>
-    </div>
-
-    <div class="step-row" style="border-bottom:none;">
-      <div class="step-icon">👥</div>
-      <div>
-        <div class="step-label">Friend referrals</div>
-        <div class="step-sub">{{friends_joined}} friend joined via your link · +{{friend_pts}} FanIQ pts earned</div>
-      </div>
-      <div class="step-status" style="color:#C9A84C;">+{{friend_pts}} pts</div>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      <tr style="border-bottom:1px solid #F0F0F5;">
+        <td width="40" style="font-size:22px;padding:14px 12px 14px 0;vertical-align:top;">🍺</td>
+        <td style="padding:14px 8px 14px 0;vertical-align:top;">
+          <div style="font-size:13px;font-weight:700;color:#374151;">Your food order is being prepared</div>
+          <div style="font-size:12px;color:#6B7280;margin-top:2px;">{{food_order}} · On its way to {{section}} {{row}} in ~{{food_eta}} min</div>
+        </td>
+        <td style="font-size:12px;font-weight:700;color:#22C55E;text-align:right;padding:14px 0;vertical-align:top;white-space:nowrap;">🟢 On the way</td>
+      </tr>
+      <tr style="border-bottom:1px solid #F0F0F5;">
+        <td width="40" style="font-size:22px;padding:14px 12px 14px 0;vertical-align:top;">🅿️</td>
+        <td style="padding:14px 8px 14px 0;vertical-align:top;">
+          <div style="font-size:13px;font-weight:700;color:#374151;">Parking confirmed</div>
+          <div style="font-size:12px;color:#6B7280;margin-top:2px;">Lot P-14 · Exit via Gate C after the game</div>
+        </td>
+        <td style="font-size:12px;font-weight:700;color:#3B82F6;text-align:right;padding:14px 0;vertical-align:top;white-space:nowrap;">✓ Set</td>
+      </tr>
+      <tr style="border-bottom:1px solid #F0F0F5;">
+        <td width="40" style="font-size:22px;padding:14px 12px 14px 0;vertical-align:top;">📲</td>
+        <td style="padding:14px 8px 14px 0;vertical-align:top;">
+          <div style="font-size:13px;font-weight:700;color:#374151;">Social rewards are live</div>
+          <div style="font-size:12px;color:#6B7280;margin-top:2px;">Post #GoNiners tonight → earn 500 FanIQ points ($15 value)</div>
+        </td>
+        <td style="font-size:12px;font-weight:700;color:#22C55E;text-align:right;padding:14px 0;vertical-align:top;white-space:nowrap;">Active</td>
+      </tr>
+      <tr>
+        <td width="40" style="font-size:22px;padding:14px 12px 14px 0;vertical-align:top;">👥</td>
+        <td style="padding:14px 8px 14px 0;vertical-align:top;">
+          <div style="font-size:13px;font-weight:700;color:#374151;">Friend referrals</div>
+          <div style="font-size:12px;color:#6B7280;margin-top:2px;">{{friends_joined}} friend joined via your link · +{{friend_pts}} FanIQ pts earned</div>
+        </td>
+        <td style="font-size:12px;font-weight:700;color:#C9A84C;text-align:right;padding:14px 0;vertical-align:top;white-space:nowrap;">+{{friend_pts}} pts</td>
+      </tr>
+    </table>
 
     <!-- UPGRADE -->
     <div class="upgrade-box">
@@ -98,10 +97,12 @@
     <div class="progress-section">
       <div class="progress-title">Your loyalty progress</div>
       <div class="progress-track"><div class="progress-fill" style="width:{{ltv_progress_pct}}%"></div></div>
-      <div class="progress-labels">
-        <span style="font-weight:700;color:#374151;">{{tier_label}}</span>
-        <span>{{games_to_next}} more games → <strong>{{next_tier}}</strong></span>
-      </div>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="font-size:12px;font-weight:700;color:#374151;">{{tier_label}}</td>
+          <td style="font-size:12px;color:#6B7280;text-align:right;">{{games_to_next}} more games &rarr; <strong>{{next_tier}}</strong></td>
+        </tr>
+      </table>
     </div>
 
   </div>

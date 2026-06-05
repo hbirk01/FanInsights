@@ -345,12 +345,16 @@ def step3_social() -> dict:
             f"Niners faithful to the end. #GoNiners #FTTB"
         )
 
-    friend_rows_html = "".join(
-        f'<div class="referral-row">'
-        f'<span class="referral-fan">👤 {f["name"]} — {f["distance"]}</span>'
-        f'<span class="referral-status" style="color:#22C55E;">{f["status"]}</span>'
-        f'</div>'
-        for f in fan["friends"]
+    friend_rows_html = (
+        '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">'
+        + "".join(
+            f'<tr style="border-bottom:1px solid #EDE9FE;">'
+            f'<td style="font-size:13px;color:#374151;padding:8px 0;">👤 {f["name"]} &nbsp;·&nbsp; <span style="color:#9CA3AF;">{f["distance"]}</span></td>'
+            f'<td style="font-size:12px;font-weight:700;color:#22C55E;text-align:right;padding:8px 0;">{f["status"]}</td>'
+            f'</tr>'
+            for f in fan["friends"]
+        )
+        + '</table>'
     )
 
     share_id = _short_id()

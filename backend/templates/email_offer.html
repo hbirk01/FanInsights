@@ -80,31 +80,40 @@
 
     <!-- TICKET OFFER -->
     <div class="ticket-box">
-      <div class="ticket-row">
-        <div>
-          <div class="ticket-label">Your Seat</div>
-          <div class="ticket-value">{{section}} · {{row}}</div>
-        </div>
-        <div style="text-align:right">
-          <div class="ticket-label">Tickets</div>
-          <div class="ticket-value">{{seat_count}} · {{party_desc}}</div>
-        </div>
-      </div>
-      <div class="ticket-row" style="margin-bottom:0">
-        <div>
-          <div class="ticket-label">Zone</div>
-          <div class="ticket-value">{{preferred_zone}}</div>
-        </div>
-        <div style="text-align:right">
-          <div class="ticket-label">Status</div>
-          <div class="ticket-value" style="color:#22C55E;">✓ Available</div>
-        </div>
-      </div>
-      <div class="ticket-price-row">
-        <div class="price-orig">${{orig_price}}/ea</div>
-        <div class="price-new">${{sale_price}}<span style="font-size:13px;color:#9CA3AF;">/ea</span></div>
-        <div class="price-save">Save ${{savings}}</div>
-      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px;">
+        <tr>
+          <td style="vertical-align:top;">
+            <div class="ticket-label">Your Seat</div>
+            <div class="ticket-value">{{section}} · {{row}}</div>
+          </td>
+          <td style="vertical-align:top;text-align:right;">
+            <div class="ticket-label">Tickets</div>
+            <div class="ticket-value">{{seat_count}} · {{party_desc}}</div>
+          </td>
+        </tr>
+        <tr><td colspan="2" style="padding-top:12px;"></td></tr>
+        <tr>
+          <td style="vertical-align:top;">
+            <div class="ticket-label">Zone</div>
+            <div class="ticket-value">{{preferred_zone}}</div>
+          </td>
+          <td style="vertical-align:top;text-align:right;">
+            <div class="ticket-label">Status</div>
+            <div class="ticket-value" style="color:#22C55E;">✓ Available</div>
+          </td>
+        </tr>
+      </table>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-top:1px solid #2A2A3E;padding-top:16px;">
+        <tr>
+          <td style="padding-top:16px;vertical-align:middle;">
+            <span class="price-orig">${{orig_price}}/ea &nbsp;</span>
+            <span class="price-new">${{sale_price}}<span style="font-size:13px;color:#9CA3AF;">/ea</span></span>
+          </td>
+          <td style="padding-top:16px;text-align:right;vertical-align:middle;">
+            <span class="price-save">Save ${{savings}}</span>
+          </td>
+        </tr>
+      </table>
     </div>
 
     <!-- CTA -->
@@ -114,36 +123,40 @@
 
     <!-- ADD-ONS -->
     <div style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Make it a full night</div>
-    <div class="addons">
-      <div class="addon-pill">
-        <div class="addon-icon">🅿️</div>
-        <div>
-          <div class="addon-label">Parking P-14</div>
-          <div class="addon-price">$45 · Reserved for you</div>
-        </div>
-      </div>
-      <div class="addon-pill">
-        <div class="addon-icon">🍺</div>
-        <div>
-          <div class="addon-label">Food Pre-order</div>
-          <div class="addon-price">{{food_order}} · ${{food_total}}</div>
-        </div>
-      </div>
-      <div class="addon-pill">
-        <div class="addon-icon">🚗</div>
-        <div>
-          <div class="addon-label">Uber to Gate C</div>
-          <div class="addon-price">~${{uber_est}} · Tap to book</div>
-        </div>
-      </div>
-      <div class="addon-pill">
-        <div class="addon-icon">👕</div>
-        <div>
-          <div class="addon-label">Jersey at your seat</div>
-          <div class="addon-price">Purdy #13 · ${{jersey_price}}</div>
-        </div>
-      </div>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:20px;">
+      <tr>
+        <td width="50%" style="padding:0 5px 8px 0;">
+          <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;">
+            <span style="font-size:18px;">🅿️</span>
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px;">Parking P-14</div>
+            <div style="font-size:11px;color:#6B7280;">$45 · Reserved for you</div>
+          </div>
+        </td>
+        <td width="50%" style="padding:0 0 8px 5px;">
+          <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;">
+            <span style="font-size:18px;">🍺</span>
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px;">Food Pre-order</div>
+            <div style="font-size:11px;color:#6B7280;">{{food_order}} · ${{food_total}}</div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td width="50%" style="padding:0 5px 0 0;">
+          <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;">
+            <span style="font-size:18px;">🚗</span>
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px;">Uber to Gate C</div>
+            <div style="font-size:11px;color:#6B7280;">~${{uber_est}} · Tap to book</div>
+          </div>
+        </td>
+        <td width="50%" style="padding:0 0 0 5px;">
+          <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;">
+            <span style="font-size:18px;">👕</span>
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-top:4px;">Jersey at your seat</div>
+            <div style="font-size:11px;color:#6B7280;">Purdy #13 · ${{jersey_price}}</div>
+          </div>
+        </td>
+      </tr>
+    </table>
 
     <!-- FRIENDS NEARBY -->
     <div class="friends-box">

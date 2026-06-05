@@ -359,41 +359,41 @@ def step3_social() -> dict:
 
     share_id = _short_id()
 
-    # LTV components for tonight
-    ticket_val     = fan["price_point"] * fan["seat_count"]
-    food_val       = fan["food_total"]
-    transport_val  = 45 + fan["uber_est"]
-    merch_val      = fan["jersey_price"]
-    referral_val   = len(fan["friends"]) * 820 * 0.05  # 5% of referred fan LTV
-    tonight_ltv    = round(ticket_val + food_val + transport_val + merch_val + referral_val)
-    season_ltv_m   = round(72441 * 4820 / 1_000_000, 1)
+    # Points earned tonight (positive framing — no spend figures)
+    pts_attend   = 300   # base for attending
+    pts_food     = 100   # food pre-order bonus
+    pts_merch    = 150   # jersey purchase
+    pts_referral = len(fan["friends"]) * 200  # 200 per friend who joined
+    pts_subtotal = pts_attend + pts_food + pts_merch + pts_referral
+    pts_total    = pts_subtotal  # social 500 still pending (shown separately)
+    pts_running  = fan["loyalty"] * 12 + pts_total  # simulate running balance
+    pts_dollar_value = round(pts_total / 100)  # 100 pts = $1
 
     ctx = {
-        "fan_name":              fan["name"],
-        "section":               fan["section"],
-        "result_class":          result_class,
-        "result_emoji":          result_emoji,
-        "result_headline":       result_headline,
-        "our_score":             stats["our_score"],
-        "opp_score":             stats["opp_score"],
-        "opponent":              stats["opponent"],
-        "game_date":             stats["next_game_date"],
-        "suggested_caption":     caption,
-        "opponent_hashtag":      opp_hashtag,
-        "friend_rows":           friend_rows_html,
-        "share_id":              share_id,
-        # LTV breakdown
-        "ticket_contribution":   ticket_val,
-        "food_contribution":     food_val,
-        "transport_contribution":transport_val,
-        "merch_contribution":    merch_val,
-        "referral_contribution": round(referral_val),
-        "referrals":             len(fan["friends"]),
-        "tonight_ltv":           tonight_ltv,
-        "total_ltv":             f"{fan['ltv']:,}",
-        "games_to_platinum":     max(0, 20 - fan["attend_games"]),
-        "ltv_progress_pct":      min(95, int(fan["attend_games"] / 20 * 100)),
-        "tier_label":            fan["tier"],
+        "fan_name":          fan["name"],
+        "section":           fan["section"],
+        "result_class":      result_class,
+        "result_emoji":      result_emoji,
+        "result_headline":   result_headline,
+        "our_score":         stats["our_score"],
+        "opp_score":         stats["opp_score"],
+        "opponent":          stats["opponent"],
+        "suggested_caption": caption,
+        "opponent_hashtag":  opp_hashtag,
+        "friend_rows":       friend_rows_html,
+        "share_id":          share_id,
+        # Points breakdown
+        "pts_attend":        pts_attend,
+        "pts_food":          pts_food,
+        "pts_merch":         pts_merch,
+        "pts_referral":      pts_referral,
+        "pts_total":         pts_total,
+        "pts_running":       f"{pts_running:,}",
+        "pts_dollar_value":  pts_dollar_value,
+        # Loyalty progress
+        "games_to_platinum": max(0, 20 - fan["attend_games"]),
+        "ltv_progress_pct":  min(95, int(fan["attend_games"] / 20 * 100)),
+        "tier_label":        fan["tier"],
     }
 
     html = _render("email_social.html", ctx)
@@ -414,7 +414,7 @@ def step3_social() -> dict:
         "data_used": {
             "last_game_result": "Win" if stats["last_won"] else "Loss",
             "score": f"{stats['our_score']}-{stats['opp_score']}",
-            "tonight_ltv": tonight_ltv,
+            "pts_total": pts_total,
         },
     }
 

@@ -899,35 +899,91 @@ function renderModelTab() {
   var mc   = sportModel.model_comparison || {};
   var en   = mc.elasticnet || {};
   var rfmc = mc.randomforest || {};
+  var flabels = sportModel.feature_labels || {};
 
-  // Update title
-  setEl('model-sport-title', sportIcon + ' ' + sportName + ' Attendance Prediction Model');
-  var sub = document.querySelector('#page-model .section-sub');
-  if (sub) sub.textContent = 'Real ESPN data · ' + sportName + ' · ' +
-    (meth.n_teams || '—') + ' teams · ' + (meth.seasons || []).length + ' seasons · ' +
-    (meth.total_home_games || '—') + ' home games · 60/20/20 chronological split';
+  // ── team-specific game data from REAL ──────────────────────────────────────
+  var td        = teamData();
+  var ti        = td ? (td.team_info || {}) : {};
+  var teamName  = ti.name || ACTIVE_TEAM;
+  var teamGames = (td && td.games) ? td.games.filter(function(g){ return g.is_home && g.attendance > 0; }) : [];
 
-  // Best model: use RF if it beats ElasticNet on val (as in MLB)
-  var bestMc = (rfmc.test_mape != null && en.test_mape != null && rfmc.test_mape < en.test_mape) ? rfmc : en;
+  // ── team-specific predictions from MODEL ───────────────────────────────────
+  var allPreds  = (sportModel.predictions || []).filter(function(p){ return p.actual && p.predicted; });
+  var teamPreds = allPreds.filter(function(p){ return p.team === ACTIVE_TEAM; });
+  var hasPreds  = teamPreds.length > 0;
+
+  // Team MAPE from filtered predictions
+  var teamMape = null;
+  if (hasPreds) {
+    var mapeSum = teamPreds.reduce(function(s, p){ return s + Math.abs(p.actual - p.predicted) / p.actual; }, 0);
+    teamMape = (mapeSum / teamPreds.length * 100);
+  }
+
+  // Best model
+  var bestMc   = (rfmc.test_mape != null && en.test_mape != null && rfmc.test_mape < en.test_mape) ? rfmc : en;
   var bestName = (rfmc.test_mape != null && en.test_mape != null && rfmc.test_mape < en.test_mape) ? 'Random Forest' : 'ElasticNet';
 
-  // Stat cards
+  // ── title + subtitle ───────────────────────────────────────────────────────
+  setEl('model-sport-title', sportIcon + ' ' + teamName + ' — Attendance Prediction Model');
+  var sub = document.querySelector('#page-model .section-sub');
+  var seasons = (teamGames.length ? [...new Set(teamGames.map(function(g){ return g.season; }))].sort() : meth.seasons || []);
+  if (sub) sub.textContent = 'Real ESPN data · ' + teamName + ' · '
+    + teamGames.length + ' home games · seasons ' + (seasons[0] || '—') + '–' + (seasons[seasons.length-1] || '—')
+    + ' · league model trained on ' + (meth.n_teams || '—') + ' teams';
+
+  // ── stat cards (team-specific where possible) ──────────────────────────────
   setEl('m-sport-badge', sportName);
-  setEl('m-samples-sub', sportName + ' home games · ' + (meth.seasons ? meth.seasons[0] + '–' + meth.seasons[meth.seasons.length-1] : ''));
-  setEl('m-samples', (meth.n_training_samples || '—').toString());
-  setEl('m-lin-r2',  en.test_r2 != null ? en.test_r2.toFixed(3) : '—');
-  setEl('m-lin-mae', en.test_mape != null ? en.test_mape.toFixed(1) + '% MAPE' : '—');
+  setEl('m-samples', teamGames.length || (hasPreds ? teamPreds.length : (meth.n_training_samples || '—')));
+  setEl('m-samples-sub', teamName + ' home games · ' + sportName);
+  setEl('m-lin-r2',  teamMape != null ? teamMape.toFixed(1) + '%' : (en.test_r2 != null ? en.test_r2.toFixed(3) : '—'));
+  setEl('m-lin-mae', teamMape != null ? 'MAPE (this team)' : (en.test_mape != null ? en.test_mape.toFixed(1) + '% MAPE' : '—'));
   setEl('m-rf-r2',   bestMc.test_r2 != null ? bestMc.test_r2.toFixed(3) : '—');
   setEl('m-rf-mae',  bestMc.test_mae != null ? Math.round(bestMc.test_mae).toLocaleString() + ' fans' : '—');
-  setEl('m-rf-name', bestName + ' · 60/20/20 chronological split · MAE: ');
-  setEl('m-ci', lm.rmse ? Math.round(lm.rmse * 1.96).toLocaleString() : '—');
+  setEl('m-rf-name', bestName + ' · League-wide · MAE: ');
+  // CI from team's own attendance std dev
+  var teamAtts = teamGames.map(function(g){ return g.attendance; });
+  var teamCi = teamAtts.length > 1
+    ? Math.round(1.96 * Math.sqrt(teamAtts.reduce(function(s,a){ var m = teamAtts.reduce(function(x,y){return x+y;},0)/teamAtts.length; return s+(a-m)*(a-m); },0) / teamAtts.length))
+    : (lm.rmse ? Math.round(lm.rmse * 1.96) : null);
+  setEl('m-ci', teamCi ? teamCi.toLocaleString() : '—');
 
-  // correlation chart
-  var corrData   = sportModel.correlations || {};
-  var flabels    = sportModel.feature_labels || {};
-  var corrKeys   = Object.keys(corrData).sort(function(a,b){ return Math.abs(corrData[b]) - Math.abs(corrData[a]); });
-  var corrLabels = corrKeys.map(function(k){ return flabels[k] || k; });
-  var corrVals   = corrKeys.map(function(k){ return corrData[k]; });
+  // ── Pearson r correlations computed from this team's real game data ─────────
+  // Computes per-team correlation between each feature and attendance
+  function pearsonR(xs, ys) {
+    var n = xs.length;
+    if (n < 5) return null;
+    var mx = xs.reduce(function(a,b){return a+b;},0)/n;
+    var my = ys.reduce(function(a,b){return a+b;},0)/n;
+    var num = 0, dx = 0, dy = 0;
+    for (var i=0; i<n; i++) { num += (xs[i]-mx)*(ys[i]-my); dx += (xs[i]-mx)*(xs[i]-mx); dy += (ys[i]-my)*(ys[i]-my); }
+    var denom = Math.sqrt(dx) * Math.sqrt(dy);
+    return denom ? num / denom : 0;
+  }
+
+  var featDefs = [
+    { key:'week_of_season',    label:'Week of Season',     fn:function(g){ return g.week_of_season||g.game_of_season||0; } },
+    { key:'opponent_win_pct',  label:'Opponent Win %',      fn:function(g){ return g.opponent_win_pct||0; } },
+    { key:'is_prime_time',     label:'Prime Time Game',     fn:function(g){ return g.is_prime_time?1:0; } },
+    { key:'weather_severity',  label:'Weather Severity',    fn:function(g){ return g.weather_severity||0; } },
+    { key:'home_streak',       label:'Home Win Streak',     fn:function(g){ return g.home_streak||0; } },
+    { key:'is_divisional',     label:'Divisional Game',     fn:function(g){ return g.is_divisional?1:0; } },
+    { key:'is_weekend',        label:'Weekend Game',        fn:function(g){ return g.is_weekend?1:0; } },
+    { key:'matchup_strength',  label:'Matchup Strength',    fn:function(g){ return g.matchup_strength||0; } },
+    { key:'is_rain',           label:'Rain Game',           fn:function(g){ return (g.weather&&g.weather.is_rain)?1:0; } },
+    { key:'prev_game_margin',  label:'Prev Game Margin',    fn:function(g){ return g.prev_game_margin||0; } },
+  ];
+
+  var atts = teamGames.map(function(g){ return g.attendance; });
+  var teamCorrPairs = [];
+  featDefs.forEach(function(fd) {
+    var xs = teamGames.map(fd.fn);
+    var r = pearsonR(xs, atts);
+    if (r !== null) teamCorrPairs.push({ label: fd.label, r: r });
+  });
+  teamCorrPairs.sort(function(a,b){ return Math.abs(b.r) - Math.abs(a.r); });
+
+  var corrLabels = teamCorrPairs.length ? teamCorrPairs.map(function(p){ return p.label; }) : Object.keys(sportModel.correlations||{}).slice(0,8).map(function(k){ return flabels[k]||k; });
+  var corrVals   = teamCorrPairs.length ? teamCorrPairs.map(function(p){ return p.r; })     : Object.values(sportModel.correlations||{}).slice(0,8);
   var corrColors = corrVals.map(function(v){ return v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)'; });
 
   destroyChart('modelCorrChart');
@@ -937,7 +993,7 @@ function renderModelTab() {
     options: {
       indexAxis: 'y',
       plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: function(ctx) { return 'r = ' + ctx.parsed.x.toFixed(3); } } } },
+        tooltip: { callbacks: { label: function(ctx) { return 'r = ' + ctx.parsed.x.toFixed(3) + ' (' + teamName + ')'; } } } },
       scales: {
         x: { ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return v.toFixed(2); } }, grid: { color: GRID } },
         y: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } }
@@ -945,23 +1001,23 @@ function renderModelTab() {
     }
   });
 
-  // scatter: actual vs predicted
-  var preds = (sportModel.predictions || []).filter(function(p){ return p.actual && p.predicted; });
-  var scatterData = preds.map(function(p){
+  // ── scatter: this team's actual vs predicted only ──────────────────────────
+  var scatterSource = hasPreds ? teamPreds : allPreds.slice(0, 200);
+  var scatterData = scatterSource.map(function(p){
     return { x: p.actual, y: p.predicted, won: p.won, team: p.team, opponent: p.opponent, date: p.date };
   });
-  var allVals = preds.map(function(p){ return p.actual; });
-  var minV = Math.min.apply(null, allVals) - 2000;
-  var maxV = Math.max.apply(null, allVals) + 2000;
+  var scatterAtts = scatterSource.map(function(p){ return p.actual; });
+  var minV = Math.min.apply(null, scatterAtts) - 2000;
+  var maxV = Math.max.apply(null, scatterAtts) + 2000;
 
   destroyChart('modelScatterChart');
   chartInstances['modelScatterChart'] = new Chart(document.getElementById('modelScatterChart'), {
     type: 'scatter',
     data: {
       datasets: [{
-        label: 'Games',
+        label: teamName + ' games',
         data: scatterData,
-        backgroundColor: scatterData.map(function(d){ return d.won ? 'rgba(170,138,60,0.75)' : 'rgba(239,68,68,0.65)'; }),
+        backgroundColor: scatterData.map(function(d){ return d.won ? 'rgba(170,138,60,0.8)' : 'rgba(239,68,68,0.65)'; }),
         pointRadius: 5,
       }, {
         label: 'Perfect prediction',
@@ -976,10 +1032,10 @@ function renderModelTab() {
           label: function(ctx) {
             var d = ctx.raw;
             if (!d.date) return 'y=x reference';
-            return [d.team + ' vs ' + d.opponent, d.date,
+            return [teamName + ' vs ' + d.opponent, d.date,
                     'Actual: ' + Math.round(d.x).toLocaleString(),
                     'Predicted: ' + Math.round(d.y).toLocaleString(),
-                    'Error: ' + (Math.round(d.x) - Math.round(d.y) > 0 ? '+' : '') + Math.round(d.x - d.y).toLocaleString()];
+                    'Error: ' + (Math.round(d.x-d.y) > 0 ? '+' : '') + Math.round(d.x-d.y).toLocaleString()];
           }
         }}
       },
@@ -990,88 +1046,124 @@ function renderModelTab() {
     }
   });
 
-  // RF feature importance
+  // ── RF feature importance (league-wide model) ──────────────────────────────
   var fi = rf.feature_importance || lm.coefficients || {};
   var fiKeys = Object.keys(fi).sort(function(a,b){ return Math.abs(fi[b]) - Math.abs(fi[a]); }).slice(0, 12);
-  var fiLabels = fiKeys.map(function(k){ return (sportModel.feature_labels||{})[k] || k; });
-  var fiVals = fiKeys.map(function(k){ return Math.abs(fi[k]); });
-
   destroyChart('modelFIChart');
   chartInstances['modelFIChart'] = new Chart(document.getElementById('modelFIChart'), {
     type: 'bar',
-    data: { labels: fiLabels, datasets: [{ data: fiVals, backgroundColor: GOLD, borderWidth: 0 }] },
-    options: {
-      indexAxis: 'y',
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } },
-        y: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } }
-      }
-    }
+    data: { labels: fiKeys.map(function(k){ return flabels[k]||k; }), datasets: [{ data: fiKeys.map(function(k){ return Math.abs(fi[k]); }), backgroundColor: GOLD, borderWidth: 0 }] },
+    options: { indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } }, y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } } } }
   });
 
-  // Linear coefficients (signed — shows direction)
+  // ── linear coefficients (league-wide) ─────────────────────────────────────
   var coeffs = lm.coefficients || {};
-  var cKeys = Object.keys(coeffs).sort(function(a,b){ return Math.abs(coeffs[b]) - Math.abs(coeffs[a]); }).slice(0, 12);
-  var cLabels = cKeys.map(function(k){ return (sportModel.feature_labels||{})[k] || k; });
-  var cVals   = cKeys.map(function(k){ return coeffs[k]; });
-  var cColors = cVals.map(function(v){ return v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)'; });
-
+  var cKeys  = Object.keys(coeffs).sort(function(a,b){ return Math.abs(coeffs[b]) - Math.abs(coeffs[a]); }).slice(0, 12);
+  var cVals  = cKeys.map(function(k){ return coeffs[k]; });
   destroyChart('modelCoeffChart');
   chartInstances['modelCoeffChart'] = new Chart(document.getElementById('modelCoeffChart'), {
     type: 'bar',
-    data: { labels: cLabels, datasets: [{ data: cVals, backgroundColor: cColors, borderWidth: 0 }] },
-    options: {
-      indexAxis: 'y',
-      plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: function(ctx) {
-          var v = ctx.parsed.x;
-          return (v > 0 ? '+' : '') + Math.round(v).toLocaleString() + ' fans per unit';
-        }}}
-      },
-      scales: {
-        x: { ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return (v>0?'+':'') + Math.round(v); } }, grid: { color: GRID } },
-        y: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } }
-      }
-    }
+    data: { labels: cKeys.map(function(k){ return flabels[k]||k; }), datasets: [{ data: cVals, backgroundColor: cVals.map(function(v){ return v>=0?'rgba(34,197,94,0.75)':'rgba(239,68,68,0.75)'; }), borderWidth:0 }] },
+    options: { indexAxis:'y', plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(ctx){ var v=ctx.parsed.x; return (v>0?'+':'')+Math.round(v).toLocaleString()+' fans per unit'; } } } }, scales:{ x:{ ticks:{ color:MUTED, font:{size:10}, callback:function(v){return (v>0?'+':'')+Math.round(v);} }, grid:{ color:GRID } }, y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } } } }
   });
 
-  // insights
+  // ── team-specific insights derived from real game data ─────────────────────
   var insEl = document.getElementById('model-insights');
   if (insEl) {
-    var insights = sportModel.insights || [];
-    insEl.innerHTML = insights.length ? insights.map(function(txt) {
-      return '<div class="insight" style="margin-bottom:0"><div class="insight-text">' + txt + '</div></div>';
-    }).join('') : '<div style="color:var(--muted);font-size:0.85rem">No insights available</div>';
+    var teamInsights = buildTeamInsights(teamGames, teamName);
+    // Fall back to league insights if not enough team data
+    if (!teamInsights.length) teamInsights = (sportModel.insights || []).slice(0, 4);
+    insEl.innerHTML = teamInsights.length
+      ? teamInsights.map(function(txt){ return '<div class="insight" style="margin-bottom:0"><div class="insight-text">' + txt + '</div></div>'; }).join('')
+      : '<div style="color:var(--muted);font-size:0.85rem">Run scraper to generate insights for ' + teamName + '</div>';
   }
 
-  // model comparison table (replaces forward-predictions table)
+  // ── model comparison table (league-wide) ───────────────────────────────────
   var tbody = document.getElementById('model-fwd-body');
   if (tbody) {
-    var rows = [
-      { name: 'Naive baseline (team mean)', d: { test_mape: meth.naive_baseline_test_mape, test_mae: meth.naive_baseline_test_mae }, floor: true },
-      { name: 'Ridge Regression',    d: mc.ridge || {} },
-      { name: 'ElasticNet (L1+L2)',  d: mc.elasticnet || {} },
-      { name: 'Random Forest',       d: mc.randomforest || {} },
+    var mcRows = [
+      { name:'Naive baseline (team mean)', d:{ test_mape:meth.naive_baseline_test_mape, test_mae:meth.naive_baseline_test_mae }, floor:true },
+      { name:'Ridge Regression',    d:mc.ridge||{} },
+      { name:'ElasticNet (L1+L2)',  d:mc.elasticnet||{} },
+      { name:'Random Forest',       d:mc.randomforest||{} },
     ];
     var baseMape = meth.naive_baseline_test_mape;
-    tbody.innerHTML = rows.map(function(r) {
+    tbody.innerHTML = mcRows.map(function(r){
       var d = r.d;
       var beats = (!r.floor && d.test_mape != null && baseMape != null && d.test_mape < baseMape);
       var beatCell = r.floor ? '<span style="color:var(--muted)">— floor —</span>'
-                    : (beats ? '<span style="color:var(--green)">✓ beats baseline</span>'
-                             : '<span style="color:var(--muted)">at baseline</span>');
-      return '<tr>' +
-        '<td><strong>' + r.name + '</strong></td>' +
-        '<td>' + (d.train_r2 != null ? d.train_r2.toFixed(3) : '—') + '</td>' +
-        '<td>' + (d.val_r2 != null ? d.val_r2.toFixed(3) : '—') + '</td>' +
-        '<td style="font-weight:700;color:var(--gold)">' + (d.test_r2 != null ? d.test_r2.toFixed(3) : '—') + '</td>' +
-        '<td>' + (d.test_mae != null ? Math.round(d.test_mae).toLocaleString() : '—') + '</td>' +
-        '<td style="font-weight:600">' + (d.test_mape != null ? d.test_mape.toFixed(1) + '%' : '—') + '</td>' +
-        '<td>' + beatCell + '</td>' +
-      '</tr>';
+                    : (beats ? '<span style="color:var(--green)">✓ beats baseline</span>' : '<span style="color:var(--muted)">at baseline</span>');
+      return '<tr><td><strong>' + r.name + '</strong></td>'
+        + '<td>' + (d.train_r2!=null?d.train_r2.toFixed(3):'—') + '</td>'
+        + '<td>' + (d.val_r2!=null?d.val_r2.toFixed(3):'—') + '</td>'
+        + '<td style="font-weight:700;color:var(--gold)">' + (d.test_r2!=null?d.test_r2.toFixed(3):'—') + '</td>'
+        + '<td>' + (d.test_mae!=null?Math.round(d.test_mae).toLocaleString():'—') + '</td>'
+        + '<td style="font-weight:600">' + (d.test_mape!=null?d.test_mape.toFixed(1)+'%':'—') + '</td>'
+        + '<td>' + beatCell + '</td></tr>';
     }).join('');
   }
+}
+
+// ── team-specific model insights from real game data ──────────────────────────
+function buildTeamInsights(games, teamName) {
+  if (games.length < 5) return [];
+  var ins = [];
+
+  function avg(arr) { return arr.length ? arr.reduce(function(a,b){return a+b;},0)/arr.length : 0; }
+  function fmt(n) { return Math.round(Math.abs(n)).toLocaleString(); }
+
+  var atts   = games.map(function(g){ return g.attendance; });
+  var meanAtt = avg(atts);
+
+  // Rain impact
+  var rainG = games.filter(function(g){ return g.weather && g.weather.is_rain; });
+  var dryG  = games.filter(function(g){ return g.weather && !g.weather.is_rain; });
+  if (rainG.length >= 2 && dryG.length >= 2) {
+    var diff = Math.round(avg(rainG.map(function(g){return g.attendance;})) - avg(dryG.map(function(g){return g.attendance;})));
+    ins.push('🌧 Rain games draw <strong>' + fmt(diff) + ' ' + (diff < 0 ? 'fewer' : 'more') + ' fans</strong> at ' + teamName + ' — vs clear-weather (' + rainG.length + ' rain games analysed).');
+  }
+
+  // Prime time impact
+  var primeG = games.filter(function(g){ return g.is_prime_time; });
+  var dayG   = games.filter(function(g){ return !g.is_prime_time; });
+  if (primeG.length >= 2 && dayG.length >= 2) {
+    var pdiff = Math.round(avg(primeG.map(function(g){return g.attendance;})) - avg(dayG.map(function(g){return g.attendance;})));
+    ins.push('📺 Prime time kickoffs draw <strong>' + fmt(pdiff) + ' ' + (pdiff >= 0 ? 'more' : 'fewer') + ' fans</strong> at ' + teamName + ' (' + primeG.length + ' night games vs ' + dayG.length + ' day games).');
+  }
+
+  // Divisional impact
+  var divG    = games.filter(function(g){ return g.is_divisional; });
+  var nonDivG = games.filter(function(g){ return !g.is_divisional; });
+  if (divG.length >= 2 && nonDivG.length >= 2) {
+    var ddiff = Math.round(avg(divG.map(function(g){return g.attendance;})) - avg(nonDivG.map(function(g){return g.attendance;})));
+    ins.push('🏆 Divisional rivalries draw <strong>' + fmt(ddiff) + ' ' + (ddiff >= 0 ? 'more' : 'fewer') + ' fans</strong> (' + divG.length + ' divisional home games).');
+  }
+
+  // Win streak impact
+  var streakG  = games.filter(function(g){ return g.home_streak >= 3; });
+  var noStreak = games.filter(function(g){ return g.home_streak < 1; });
+  if (streakG.length >= 2 && noStreak.length >= 2) {
+    var sdiff = Math.round(avg(streakG.map(function(g){return g.attendance;})) - avg(noStreak.map(function(g){return g.attendance;})));
+    ins.push('🔥 A home win streak of 3+ games adds <strong>' + fmt(sdiff) + ' fans</strong> per game at ' + teamName + ' — momentum drives casual fan turnout.');
+  }
+
+  // Weekend vs weekday
+  var wkndG = games.filter(function(g){ return g.is_weekend; });
+  var wkdyG = games.filter(function(g){ return !g.is_weekend; });
+  if (wkndG.length >= 2 && wkdyG.length >= 2) {
+    var wdiff = Math.round(avg(wkndG.map(function(g){return g.attendance;})) - avg(wkdyG.map(function(g){return g.attendance;})));
+    ins.push('📅 Weekend home games at ' + teamName + ' average <strong>' + fmt(wdiff) + ' ' + (wdiff >= 0 ? 'more' : 'fewer') + ' fans</strong> vs weekday fixtures (' + wkndG.length + ' vs ' + wkdyG.length + ' games).');
+  }
+
+  // Season phase
+  var lateG  = games.filter(function(g){ return g.season_phase === 'late' || (g.week_of_season||0) >= 13; });
+  var earlyG = games.filter(function(g){ return g.season_phase === 'early' || (g.week_of_season||0) < 6; });
+  if (lateG.length >= 2 && earlyG.length >= 2) {
+    var phaseDiff = Math.round(avg(lateG.map(function(g){return g.attendance;})) - avg(earlyG.map(function(g){return g.attendance;})));
+    ins.push('📈 Late-season attendance is <strong>' + fmt(phaseDiff) + ' ' + (phaseDiff >= 0 ? 'higher' : 'lower') + '</strong> than early-season at ' + teamName + ' — playoff implications drive demand.');
+  }
+
+  return ins.slice(0, 5);
 }
 
 // ── interactive predictor ─────────────────────────────────────────────────────

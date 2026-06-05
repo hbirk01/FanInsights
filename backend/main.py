@@ -309,34 +309,46 @@ def demo_config():
 
 
 @app.post("/api/demo/run", summary="Step 1 — Geo trigger offer email")
-def demo_run():
+def demo_run(fan: str = Query("marcus", description="Fan profile key: marcus|priya|david|lisa")):
     """
     Fires Step 1 of the fan journey: geo-proximity detected → personalised
     ticket offer email sent to RECIPIENT_EMAIL.
-    Uses real 49ers ghost risk + live Open-Meteo weather data.
+    Email copy adapts to fan's engagement strategy:
+      marcus → upsell (Platinum, upgrade)
+      priya  → winback (at-risk, personal comeback)
+      david  → retention (Silver, loyalty nudge)
+      lisa   → reacquisition (Bronze, biggest deal)
     """
     from demo_runner import step1_geo_trigger
-    return step1_geo_trigger()
+    return step1_geo_trigger(fan_key=fan)
 
 
 @app.post("/api/demo/checkin", summary="Step 2 — Stadium entry email")
-def demo_checkin():
-    """
-    Fires Step 2: fan scans into stadium → food-delivery confirmation,
-    seat upgrade offer, loyalty progress update.
-    """
+def demo_checkin(fan: str = Query("marcus", description="Fan profile key: marcus|priya|david|lisa")):
+    """Fires Step 2: fan scans into stadium → food confirmation, upgrade, loyalty progress."""
     from demo_runner import step2_checkin
-    return step2_checkin()
+    return step2_checkin(fan_key=fan)
 
 
 @app.post("/api/demo/social", summary="Step 3 — Post-game social push email")
-def demo_social():
-    """
-    Fires Step 3: post-game social incentive + full LTV recap.
-    Uses real last-game result (win/loss, score) from scraped data.
-    """
+def demo_social(fan: str = Query("marcus", description="Fan profile key: marcus|priya|david|lisa")):
+    """Fires Step 3: post-game social incentive + full LTV recap."""
     from demo_runner import step3_social
-    return step3_social()
+    return step3_social(fan_key=fan)
+
+
+@app.get("/api/demo/fans", summary="Available demo fan profiles")
+def demo_fans():
+    """Return the 4 fan profiles and their engagement strategies."""
+    from demo_runner import FAN_PROFILES
+    return {
+        k: {
+            "name": v["name"], "action": v["action"],
+            "tier": v["tier"], "risk": v["risk"],
+            "loyalty": v["loyalty"], "ltv": v["ltv"],
+        }
+        for k, v in FAN_PROFILES.items()
+    }
 
 
 # ── serve frontend ────────────────────────────────────────────────────────────

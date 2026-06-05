@@ -27,33 +27,123 @@ BASE_DIR   = Path(__file__).parent
 DATA_PATH  = BASE_DIR / "data" / "real_data.json"
 TMPL_DIR   = BASE_DIR / "templates"
 
-# ── fan profile (Marcus Thompson — maps to dashboard mock data) ───────────────
-FAN_PROFILE = {
-    "name":           DEMO_FAN or "Marcus Thompson",
-    "section":        "Sec 120",
-    "row":            "Row 3",
-    "seat_count":     2,
-    "party":          3,
-    "party_desc":     "Family (2 adults, 1 child)",
-    "preferred_zone": "Lower Bowl · Sideline",
-    "price_point":    142,
-    "loyalty":        91,
-    "ltv":            8240,
-    "tier":           "Gold",
-    "next_tier":      "Platinum",
-    "attend_games":   16,
-    "food_order":     "3x Tacos + 2x Modelo + 1 lemonade",
-    "food_total":     58,
-    "uber_est":       24,
-    "jersey_price":   85,
-    "gate":           "C",
-    "upgrade_section":"Sec 108",
-    "upgrade_price":  12,
-    "friends":        [
-        {"name": "Sarah Chen",    "distance": "1.8 mi", "status": "Link sent"},
-        {"name": "James Williams","distance": "3.4 mi", "status": "Pending"},
-    ],
+# ── fan profiles — 4 types covering every engagement strategy ─────────────────
+FAN_PROFILES = {
+    # Platinum, low risk → UPSELL: lead with exclusivity, not price
+    "marcus": {
+        "name": "Marcus Thompson", "action": "upsell",
+        "section": "Sec 120", "row": "Row 3", "seat_count": 2,
+        "party": 3, "party_desc": "Family (2 adults, 1 child)",
+        "preferred_zone": "Lower Bowl · Sideline",
+        "price_point": 142, "loyalty": 91, "ltv": 8240, "risk": 8,
+        "tier": "Platinum", "next_tier": "Platinum (already there)",
+        "attend_games": 16, "last_contact": "2 days ago",
+        "food_order": "3x Tacos + 2x Modelo + 1 lemonade", "food_total": 58,
+        "uber_est": 24, "jersey_price": 85, "gate": "C",
+        "upgrade_section": "Sec 108", "upgrade_price": 12,
+        "friends": [{"name": "Sarah Chen", "distance": "1.8 mi", "status": "Link sent"},
+                    {"name": "James Williams", "distance": "3.4 mi", "status": "Pending"}],
+    },
+    # At-risk, medium-high → WIN-BACK: personal, warm, bigger discount
+    "priya": {
+        "name": "Priya Kapoor", "action": "winback",
+        "section": "Sec 133", "row": "Row 7", "seat_count": 4,
+        "party": 4, "party_desc": "Family (2 adults, 2 children)",
+        "preferred_zone": "Upper Sideline",
+        "price_point": 88, "loyalty": 44, "ltv": 6840, "risk": 74,
+        "tier": "At-Risk", "next_tier": "Silver",
+        "attend_games": 7, "last_contact": "3 weeks ago",
+        "food_order": "4x Hot Dogs + 4x Sodas", "food_total": 48,
+        "uber_est": 18, "jersey_price": 85, "gate": "A",
+        "upgrade_section": "Sec 115", "upgrade_price": 20,
+        "friends": [{"name": "Amanda Foster", "distance": "2.1 mi", "status": "Pending"}],
+    },
+    # Silver, moderate risk → RETENTION: urgency + loyalty nudge toward Gold
+    "david": {
+        "name": "David Park", "action": "retention",
+        "section": "Sec 302", "row": "Row 9", "seat_count": 2,
+        "party": 2, "party_desc": "Couple",
+        "preferred_zone": "Upper Corner",
+        "price_point": 62, "loyalty": 58, "ltv": 2100, "risk": 41,
+        "tier": "Silver", "next_tier": "Gold",
+        "attend_games": 8, "last_contact": "2 weeks ago",
+        "food_order": "2x Nachos + 2x Beer", "food_total": 38,
+        "uber_est": 16, "jersey_price": 65, "gate": "B",
+        "upgrade_section": "Sec 215", "upgrade_price": 8,
+        "friends": [{"name": "Robert Kim", "distance": "4.2 mi", "status": "Pending"}],
+    },
+    # Bronze, lapsed → RE-ACQUISITION: low pressure, biggest deal, include food
+    "lisa": {
+        "name": "Lisa Martinez", "action": "reacquisition",
+        "section": "Sec 418", "row": "Row 2", "seat_count": 1,
+        "party": 1, "party_desc": "Solo",
+        "preferred_zone": "Upper Deck",
+        "price_point": 45, "loyalty": 29, "ltv": 640, "risk": 55,
+        "tier": "Bronze", "next_tier": "Silver",
+        "attend_games": 3, "last_contact": "6 weeks ago",
+        "food_order": "1x Nachos + 1x Soda", "food_total": 18,
+        "uber_est": 12, "jersey_price": 65, "gate": "D",
+        "upgrade_section": "Sec 318", "upgrade_price": 15,
+        "friends": [],
+    },
 }
+
+# Default fan for backwards compatibility
+FAN_PROFILE = FAN_PROFILES["marcus"]
+
+
+def get_action_copy(fan: dict, disc: int, sale: int, orig: int) -> dict:
+    """
+    Return email copy variants based on the fan's engagement strategy.
+    Four strategies: upsell, winback, retention, reacquisition.
+    """
+    name_first = fan["name"].split()[0]
+    action = fan.get("action", "retention")
+
+    if action == "upsell":
+        return {
+            "hero_title":    f"{name_first}, something special is ready for you.",
+            "hero_sub":      "As a Platinum member you have priority access to the best seats in the house — upgrade your experience this Sunday.",
+            "offer_label":   "Your exclusive upgrade",
+            "cta_text":      f"Accept your upgrade — ${sale * fan['seat_count']} total →",
+            "special_offer": f"Priority Row 1 access · VIP parking included · {disc}% Platinum discount",
+            "urgency_note":  "Reserved exclusively for Platinum members — offer expires 2 hours before kickoff.",
+            "discount_note": f"${disc}% off as a thank-you for your loyalty. No promo code needed.",
+        }
+
+    elif action == "winback":
+        return {
+            "hero_title":    f"We've missed you at the stadium, {name_first}.",
+            "hero_sub":      f"It's been {fan['last_contact']} since your last game. Your section is still here — come back this Sunday.",
+            "offer_label":   "Your comeback offer",
+            "cta_text":      f"Claim your comeback seats →",
+            "special_offer": f"{disc}% welcome-back discount · 500 bonus FanIQ points on return · Food included",
+            "urgency_note":  "This offer was prepared personally for you. It expires at kickoff.",
+            "discount_note": f"We added an extra {disc}% off because we want you back. Bring the family.",
+        }
+
+    elif action == "retention":
+        games_to_gold = max(0, 12 - fan["attend_games"])
+        return {
+            "hero_title":    f"{name_first}, your seats are going fast — lock them in now.",
+            "hero_sub":      f"You're only {games_to_gold} games from Gold tier. This Sunday counts.",
+            "offer_label":   "Your loyalty offer",
+            "cta_text":      f"Hold my seats — ${sale * fan['seat_count']} total →",
+            "special_offer": f"{disc}% loyalty discount · Double FanIQ points this game · {games_to_gold} games to Gold",
+            "urgency_note":  "Seats at your section are selling. Your preference is held for 90 minutes.",
+            "discount_note": f"{disc}% off for Silver members this game — plus double points toward Gold tier.",
+        }
+
+    else:  # reacquisition
+        return {
+            "hero_title":    f"Ready to experience game day the right way, {name_first}?",
+            "hero_sub":      "We're making it easy to try a premium game day — biggest offer of the season, food included.",
+            "offer_label":   "Your first premium experience",
+            "cta_text":      "Try premium for less →",
+            "special_offer": f"{disc}% off + food included · No commitment · Seat upgrade on arrival",
+            "urgency_note":  "Limited availability at this price — offer valid until kickoff Sunday.",
+            "discount_note": f"This is our biggest discount of the season. Food is on us — just show up.",
+        }
 
 # ── load real 49ers data ───────────────────────────────────────────────────────
 
@@ -184,22 +274,49 @@ def _short_id() -> str:
 
 # ── STEP 1 — Geo Trigger ──────────────────────────────────────────────────────
 
-def step1_geo_trigger() -> dict:
-    """Build + send the geo-proximity ticket offer email."""
-    fan    = FAN_PROFILE
+def step1_geo_trigger(fan_key: str = "marcus") -> dict:
+    """
+    Build + send the geo-proximity ticket offer email.
+    Copy varies by fan engagement strategy:
+      marcus  → upsell      (Platinum, upgrade experience)
+      priya   → winback     (at-risk, personal comeback offer)
+      david   → retention   (Silver, loyalty nudge toward Gold)
+      lisa    → reacquisition (Bronze, biggest deal, low pressure)
+    """
+    fan    = FAN_PROFILES.get(fan_key, FAN_PROFILES["marcus"])
     stats  = get_real_game_stats(DEMO_TEAM)
     wx     = get_live_weather()
-    disc, sale, orig = calc_discount(stats["avg_ghost_risk"])
-    seat_count = fan["seat_count"]
-    savings    = (orig - sale) * seat_count
-    total_cost = sale * seat_count + fan["food_total"] + 45  # parking
+
+    # Adjust discount by action type — win-back and reacquisition get bigger discounts
+    base_disc, sale, orig = calc_discount(stats["avg_ghost_risk"])
+    action = fan.get("action", "retention")
+    disc_overrides = {"upsell": base_disc, "retention": base_disc,
+                      "winback": min(base_disc + 10, 30), "reacquisition": min(base_disc + 15, 35)}
+    disc = disc_overrides[action]
+    sale = round(orig * (1 - disc / 100))
+
+    seat_count    = fan["seat_count"]
+    savings       = (orig - sale) * seat_count
+    food_included = action == "reacquisition"
+    total_cost    = sale * seat_count + (0 if food_included else fan["food_total"]) + 45
 
     friends_count = len(fan["friends"])
-    friend_names  = " and ".join(f["name"] for f in fan["friends"])
-    friend_distances = fan["friends"][0]["distance"] if fan["friends"] else "nearby"
+    friend_names  = " and ".join(f["name"] for f in fan["friends"]) if fan["friends"] else "some friends"
 
     offer_id = _short_id()
     share_id = _short_id()
+
+    # Action-specific copy — everything that varies by strategy
+    copy = get_action_copy(fan, disc, sale, orig)
+
+    # Subject line varies by action
+    subject_map = {
+        "upsell":        f"🏈 {fan['name'].split()[0]}, your Platinum upgrade is ready for Sunday",
+        "winback":       f"🏈 {fan['name'].split()[0]}, we've saved your seats — come back this Sunday",
+        "retention":     f"🏈 {fan['name'].split()[0]}, {seat_count} seats at ${sale}/ea — {disc}% off this Sunday",
+        "reacquisition": f"🏈 {fan['name'].split()[0]}, biggest deal of the season — {disc}% off + food included",
+    }
+    subject = subject_map.get(action, subject_map["retention"])
 
     ctx = {
         # Fan
@@ -211,8 +328,16 @@ def step1_geo_trigger() -> dict:
         "preferred_zone": fan["preferred_zone"],
         "fan_ltv":        f"{fan['ltv']:,}",
         "loyalty_score":  fan["loyalty"],
-        "loyalty_pct":    "8",
+        "loyalty_pct":    "8" if fan["loyalty"] > 70 else "25",
         "attend_games":   fan["attend_games"],
+        # Action-specific copy
+        "hero_title":     copy["hero_title"],
+        "hero_sub":       copy["hero_sub"],
+        "offer_label":    copy["offer_label"],
+        "cta_text":       copy["cta_text"],
+        "special_offer":  copy["special_offer"],
+        "urgency_note":   copy["urgency_note"],
+        "discount_note":  copy["discount_note"],
         # Offer
         "orig_price":     orig,
         "sale_price":     sale,
@@ -220,7 +345,8 @@ def step1_geo_trigger() -> dict:
         "savings":        savings,
         "total_cost":     total_cost,
         "food_order":     fan["food_order"],
-        "food_total":     fan["food_total"],
+        "food_total":     0 if food_included else fan["food_total"],
+        "food_included":  "Included free" if food_included else f"${fan['food_total']}",
         "uber_est":       fan["uber_est"],
         "jersey_price":   fan["jersey_price"],
         "offer_id":       offer_id,
@@ -243,16 +369,17 @@ def step1_geo_trigger() -> dict:
         "distance":       "3.2 miles",
         "friends_count":  friends_count,
         "friend_names":   friend_names,
-        "friends_distance": f"{friends_count} within 5 mi",
+        "friends_distance": f"{friends_count} within 5 mi" if friends_count else "no nearby friends detected",
     }
 
     html = _render("email_offer.html", ctx)
-    subject = f"🏈 {fan['name']} — you're 3.2mi from Levi's. {seat_count} seats at ${sale}/ea ({disc}% off)"
     result = send_email(RECIPIENT_EMAIL, subject, html)
 
     return {
         "step": 1,
         "name": "Geo Trigger",
+        "fan": fan["name"],
+        "action": action,
         "email_sent": result["sent"],
         "email_error": result.get("error"),
         "recipient": RECIPIENT_EMAIL,
@@ -272,9 +399,9 @@ def step1_geo_trigger() -> dict:
 
 # ── STEP 2 — Stadium Check-in ──────────────────────────────────────────────────
 
-def step2_checkin() -> dict:
+def step2_checkin(fan_key: str = "marcus") -> dict:
     """Send the stadium entry confirmation email."""
-    fan   = FAN_PROFILE
+    fan   = FAN_PROFILES.get(fan_key, FAN_PROFILES["marcus"])
     stats = get_real_game_stats(DEMO_TEAM)
     now   = datetime.now().strftime("%-I:%M %p")
 
@@ -319,9 +446,9 @@ def step2_checkin() -> dict:
 
 # ── STEP 3 — Post-Game Social Push ────────────────────────────────────────────
 
-def step3_social() -> dict:
+def step3_social(fan_key: str = "marcus") -> dict:
     """Send post-game social incentive + LTV recap email."""
-    fan   = FAN_PROFILE
+    fan   = FAN_PROFILES.get(fan_key, FAN_PROFILES["marcus"])
     stats = get_real_game_stats(DEMO_TEAM)
 
     result_class   = "win" if stats["last_won"] else "loss"

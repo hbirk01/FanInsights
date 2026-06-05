@@ -1507,6 +1507,49 @@ function loadDemoConfig() {
   xhr.send();
 }
 
+var DEMO_FAN_KEY = 'marcus';
+
+var DEMO_FAN_ACTIONS = {
+  marcus: { label:'Upsell',         color:'#C9A84C', desc:'Platinum · loyalty 91 · risk 8%. Lead with exclusivity and upgrade experience, not price.' },
+  priya:  { label:'Win-Back',       color:'#EF4444', desc:'At-Risk · loyalty 44 · risk 74%. Personal and warm — "we\'ve missed you." Bigger discount, bonus points.' },
+  david:  { label:'Retention',      color:'#3B82F6', desc:'Silver · loyalty 58 · risk 41%. Urgency-led — lock in your spot + loyalty nudge toward Gold tier.' },
+  lisa:   { label:'Re-acquisition', color:'#8B5CF6', desc:'Bronze · loyalty 29 · risk 55%. Low pressure, biggest discount, food included — just get them back in the door.' },
+};
+
+function selectDemoFan(fanKey, btn) {
+  DEMO_FAN_KEY = fanKey;
+  // Update button styles
+  document.querySelectorAll('.poc-fan-btn').forEach(function(b) {
+    b.style.background = 'transparent';
+    b.style.color = 'var(--muted)';
+    b.style.borderColor = 'var(--border)';
+  });
+  var cfg = DEMO_FAN_ACTIONS[fanKey] || DEMO_FAN_ACTIONS.marcus;
+  btn.style.background = 'rgba(' + hexToRgb(cfg.color) + ',0.15)';
+  btn.style.color = cfg.color;
+  btn.style.borderColor = cfg.color;
+  // Update description
+  var desc = document.getElementById('poc-action-desc');
+  if (desc) desc.innerHTML = '<strong style="color:' + cfg.color + '">' + cfg.label + '</strong> — ' + cfg.desc;
+  desc.style.borderLeftColor = cfg.color;
+  // Reset step statuses
+  [1,2,3].forEach(function(s){
+    setEl('poc-s' + s + '-text', '⏳ Pending');
+    setEl('poc-s' + s + '-sub', '');
+    var el = document.getElementById('poc-status-' + s);
+    if (el) el.style.borderColor = 'var(--border)';
+  });
+  [1,2,3].forEach(function(s){
+    var b = document.getElementById('poc-btn-' + s);
+    if (b) { b.disabled = false; b.textContent = ['','📍 Step 1: Geo Trigger →','✅ Step 2: Check-In →','📲 Step 3: Social Push'][s]; }
+  });
+}
+
+function hexToRgb(hex) {
+  var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return r + ',' + g + ',' + b;
+}
+
 function runDemoStep(step) {
   var endpoints = { 1: '/api/demo/run', 2: '/api/demo/checkin', 3: '/api/demo/social' };
   var btnIds    = { 1: 'poc-btn-1', 2: 'poc-btn-2', 3: 'poc-btn-3' };
@@ -1519,7 +1562,7 @@ function runDemoStep(step) {
   setEl(statusMap[step], '⏳ Sending email…');
 
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', API_BASE + endpoints[step]);
+  xhr.open('POST', API_BASE + endpoints[step] + '?fan=' + DEMO_FAN_KEY);
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.onload = function() {
     if (btn) { btn.disabled = false; btn.textContent = '✅ ' + names[step] + ' sent'; }

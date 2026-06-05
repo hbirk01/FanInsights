@@ -175,6 +175,32 @@
       <div id="poc-config-status" class="chip">⚙️ Loading config…</div>
     </div>
 
+    <!-- Fan selector -->
+    <div style="margin-bottom:1rem">
+      <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem">Select fan profile — email copy adapts to their engagement strategy</div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap" id="poc-fan-selector">
+        <button onclick="selectDemoFan('marcus',this)" class="poc-fan-btn active" data-fan="marcus"
+          style="padding:6px 14px;font-size:0.78rem;border-radius:6px;border:1px solid var(--gold);background:rgba(170,138,60,0.15);color:var(--gold);cursor:pointer;">
+          Marcus · Platinum · <em>Upsell</em>
+        </button>
+        <button onclick="selectDemoFan('priya',this)" class="poc-fan-btn" data-fan="priya"
+          style="padding:6px 14px;font-size:0.78rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;">
+          Priya · At-Risk · <em>Win-Back</em>
+        </button>
+        <button onclick="selectDemoFan('david',this)" class="poc-fan-btn" data-fan="david"
+          style="padding:6px 14px;font-size:0.78rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;">
+          David · Silver · <em>Retention</em>
+        </button>
+        <button onclick="selectDemoFan('lisa',this)" class="poc-fan-btn" data-fan="lisa"
+          style="padding:6px 14px;font-size:0.78rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;">
+          Lisa · Bronze · <em>Re-acquisition</em>
+        </button>
+      </div>
+      <div id="poc-action-desc" style="font-size:0.77rem;color:var(--muted);margin-top:0.5rem;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--gold)">
+        <strong style="color:var(--gold)">Upsell</strong> — Platinum member, loyalty 91, risk 8%. Lead with exclusivity and upgrade experience, not price.
+      </div>
+    </div>
+
     <!-- Step buttons -->
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.2rem">
       <button class="btn btn-gold" onclick="runDemoStep(1)" id="poc-btn-1" style="padding:8px 18px;font-size:0.85rem">

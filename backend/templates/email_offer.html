@@ -62,8 +62,8 @@
   <!-- HERO -->
   <div class="hero">
     <div class="hero-distance">📍 {{distance}} from Levi's Stadium</div>
-    <h1 class="hero-title">{{fan_name}}, tonight's game<br>has seats with your name on them.</h1>
-    <p class="hero-sub">Members-only offer · Expires at kickoff</p>
+    <h1 class="hero-title">{{hero_title}}</h1>
+    <p class="hero-sub">{{hero_sub}}</p>
   </div>
 
   <!-- GAME + WEATHER -->
@@ -83,7 +83,7 @@
       <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px;">
         <tr>
           <td style="vertical-align:top;">
-            <div class="ticket-label">Your Seat</div>
+            <div class="ticket-label">{{offer_label}}</div>
             <div class="ticket-value">{{section}} · {{row}}</div>
           </td>
           <td style="vertical-align:top;text-align:right;">
@@ -117,9 +117,8 @@
     </div>
 
     <!-- CTA -->
-    <a href="https://faninsights.co/offer/{{offer_id}}" class="cta-btn">
-      Claim {{seat_count}} Seats — ${{total_cost}} total →
-    </a>
+    <a href="https://faninsights.co/offer/{{offer_id}}" class="cta-btn">{{cta_text}}</a>
+    <div style="font-size:11px;color:#9CA3AF;text-align:center;margin:-12px 0 16px 0;">{{urgency_note}}</div>
 
     <!-- ADD-ONS -->
     <div style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Make it a full night</div>
@@ -157,6 +156,13 @@
         </td>
       </tr>
     </table>
+
+    <!-- SPECIAL OFFER STRIP — varies by action type -->
+    <div style="background:linear-gradient(135deg,#0D0D14,#1A1A2E);border-radius:10px;padding:16px 18px;margin-bottom:20px;">
+      <div style="font-size:10px;color:#C9A84C;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">What's included</div>
+      <div style="font-size:13px;color:#E8E8F0;line-height:1.6;">{{special_offer}}</div>
+      <div style="font-size:11px;color:#7A7A9A;margin-top:8px;">{{discount_note}}</div>
+    </div>
 
     <!-- FRIENDS NEARBY -->
     <div class="friends-box">

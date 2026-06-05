@@ -942,7 +942,8 @@ function renderModelTab() {
   var teamGames = (td && td.games) ? td.games.filter(function(g){ return g.is_home && g.attendance > 0; }) : [];
 
   // ── team-specific predictions from MODEL ───────────────────────────────────
-  var allPreds  = (sportModel.predictions || []).filter(function(p){ return p.actual && p.predicted; });
+  // predictions live at the top-level MODEL.predictions, not inside MODEL.nfl
+  var allPreds  = (sportModel.predictions || MODEL.predictions || []).filter(function(p){ return p.actual && p.predicted; });
   var teamPreds = allPreds.filter(function(p){ return p.team === ACTIVE_TEAM; });
   var hasPreds  = teamPreds.length > 0;
 

@@ -193,6 +193,74 @@ def trigger_train(background_tasks: BackgroundTasks):
     return {"job_id": job_id, "status": "queued"}
 
 
+@app.get("/api/pricing/{team}", summary="Dynamic pricing recommendation")
+def get_pricing(team: str):
+    """
+    Returns per-section dynamic pricing recommendations based on ghost risk
+    from the most recent home games. Used by the Dynamic Pricing Engine tab.
+    """
+    data = _load_json(REAL_DATA_PATH)
+    teams = data.get("teams", {})
+    if team not in teams:
+        raise HTTPException(status_code=404, detail=f"Team '{team}' not found")
+
+    team_data = teams[team]
+    games = team_data.get("games", [])
+    capacity = (team_data.get("team_info") or {}).get("venue_capacity", 68500)
+
+    # Use last 3 home games to derive ghost risk by section proxy
+    home_games = [g for g in games if g.get("is_home")]
+    recent = home_games[-3:] if len(home_games) >= 3 else home_games
+
+    avg_ghost = sum(g.get("ghost_risk", 0.2) for g in recent) / max(len(recent), 1)
+    seats_remaining = int(avg_ghost * capacity)
+
+    # Generate per-section pricing (10 sections, varied risk around avg)
+    import random, hashlib
+    rng = random.Random(hashlib.md5(team.encode()).hexdigest())
+    sections = []
+    base_price = 120 if team_data.get("sport") == "football" else 55
+    section_labels = (
+        [f"Sec {100 + i}" for i in range(10)] if team_data.get("sport") == "football"
+        else [f"Sec {200 + i*10}" for i in range(10)]
+    )
+    for i, label in enumerate(section_labels):
+        risk = max(0.05, min(0.75, avg_ghost + rng.uniform(-0.15, 0.20)))
+        if risk > 0.35:
+            discount_pct = 25
+        elif risk > 0.25:
+            discount_pct = 15
+        elif risk > 0.15:
+            discount_pct = 8
+        else:
+            discount_pct = 0
+        suggested_price = round(base_price * (1 - discount_pct / 100))
+        sections.append({
+            "section": label,
+            "seats_remaining": int(risk * (capacity // 10)),
+            "ghost_risk": round(risk, 3),
+            "discount_pct": discount_pct,
+            "suggested_price": suggested_price,
+            "demand_score": round(1 - risk, 2),
+        })
+
+    sections.sort(key=lambda x: x["ghost_risk"], reverse=True)
+
+    recommended_discount = 25 if avg_ghost > 0.35 else (15 if avg_ghost > 0.25 else 8)
+    est_revenue_recovered = seats_remaining * base_price * recommended_discount // 100
+
+    return {
+        "team": team,
+        "capacity": capacity,
+        "seats_remaining": seats_remaining,
+        "avg_ghost_risk": round(avg_ghost, 3),
+        "recommended_discount_pct": recommended_discount,
+        "est_revenue_recovered": est_revenue_recovered,
+        "base_ticket_price": base_price,
+        "sections": sections,
+    }
+
+
 @app.get("/api/jobs/{job_id}", summary="Poll job status")
 def get_job(job_id: str):
     if job_id not in _jobs:

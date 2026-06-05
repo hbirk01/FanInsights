@@ -3,15 +3,35 @@ var REAL = null;          // populated from real_data.json
 var MODEL = null;         // populated from model_results.json
 var ACTIVE_TEAM = "sf49ers";
 
-var MLB_TEAMS = new Set(["rockies","yankees","cubs","cardinals","pirates","dodgers"]);
-var NFL_TEAMS = new Set(["sf49ers","chiefs","cowboys","eagles","giants","commanders",
+var MLB_TEAMS     = new Set(["rockies","yankees","cubs","cardinals","pirates","dodgers"]);
+var NFL_TEAMS     = new Set(["sf49ers","chiefs","cowboys","eagles","giants","commanders",
   "seahawks","rams","cardinals_nfl","bears","lions","packers","vikings","saints",
   "falcons","buccaneers","panthers","bills","patriots","dolphins","jets","chiefs",
   "raiders","chargers","broncos","ravens","steelers","browns","bengals","texans",
   "colts","jaguars","titans"]);
+var NBA_TEAMS     = new Set(["lakers","warriors","celtics","heat"]);
+var INDYCAR_EVENTS = new Set(["indy500","long_beach"]);
+
+var NBA_CONFIGS = {
+  lakers:   { name:'Los Angeles Lakers',    capacity:19068, base_price:180 },
+  warriors: { name:'Golden State Warriors', capacity:18064, base_price:210 },
+  celtics:  { name:'Boston Celtics',        capacity:19156, base_price:175 },
+  heat:     { name:'Miami Heat',            capacity:19600, base_price:160 },
+};
+var INDYCAR_CONFIGS = {
+  indy500:    { name:'Indianapolis 500',  capacity:250000, base_price:95 },
+  long_beach: { name:'Long Beach GP',     capacity:85000,  base_price:130 },
+};
 
 function activeSport() {
-  return MLB_TEAMS.has(ACTIVE_TEAM) ? "baseball" : "football";
+  if (MLB_TEAMS.has(ACTIVE_TEAM))     return 'baseball';
+  if (NBA_TEAMS.has(ACTIVE_TEAM))     return 'basketball';
+  if (INDYCAR_EVENTS.has(ACTIVE_TEAM)) return 'indycar';
+  return 'football';
+}
+
+function isUnsupportedSport() {
+  return NBA_TEAMS.has(ACTIVE_TEAM) || INDYCAR_EVENTS.has(ACTIVE_TEAM);
 }
 var chartsInit = false;
 var chartInstances = {};
@@ -21,14 +41,22 @@ var GOLD = '#AA8A3C', GOLD2 = '#C9A84C', BLUE = '#3B82F6', GREEN = '#22C55E',
 
 // ── mock fallback data ────────────────────────────────────────────────────────
 var fans = [
-  { id:1, name:'Marcus Thompson', init:'MT', color:'#6366F1', tier:'platinum', loyalty:91, ltv:8240, risk:8, section:'Sec 120', ghostRate:'6%', lastContact:'2 days ago', attend:16, party:3, tags:['Family','Jersey Buyer','Social'] },
-  { id:2, name:'Sarah Chen',      init:'SC', color:'#0EA5E9', tier:'platinum', loyalty:88, ltv:11200, risk:12, section:'Sec 108', ghostRate:'12%', lastContact:'1 day ago', attend:14, party:2, tags:['Premium','Early Arrival'] },
-  { id:3, name:'Priya Kapoor',    init:'PK', color:'#F43F5E', tier:'at-risk',  loyalty:44, ltv:6840,  risk:74, section:'Sec 133', ghostRate:'56%', lastContact:'3 weeks ago', attend:7,  party:4, tags:['At-Risk','Family'] },
-  { id:4, name:'James Williams',  init:'JW', color:'#10B981', tier:'gold',     loyalty:71, ltv:4120,  risk:23, section:'Sec 215', ghostRate:'25%', lastContact:'5 days ago', attend:12, party:1, tags:['Solo','Merch Buyer'] },
-  { id:5, name:'David Park',      init:'DP', color:'#F59E0B', tier:'silver',   loyalty:58, ltv:2100,  risk:41, section:'Sec 302', ghostRate:'33%', lastContact:'2 weeks ago', attend:8,  party:2, tags:['Casual','Price Sensitive'] },
-  { id:6, name:'Amanda Foster',   init:'AF', color:'#8B5CF6', tier:'gold',     loyalty:76, ltv:5380,  risk:19, section:'Sec 118', ghostRate:'19%', lastContact:'3 days ago', attend:13, party:4, tags:['Family','Food','Social'] },
-  { id:7, name:'Robert Kim',      init:'RK', color:'#EC4899', tier:'at-risk',  loyalty:38, ltv:3200,  risk:81, section:'Sec 228', ghostRate:'62%', lastContact:'1 month ago', attend:5,  party:2, tags:['At-Risk','Lapsed'] },
-  { id:8, name:'Lisa Martinez',   init:'LM', color:'#14B8A6', tier:'bronze',   loyalty:29, ltv:640,   risk:55, section:'Sec 418', ghostRate:'75%', lastContact:'6 weeks ago', attend:3,  party:1, tags:['Casual','Lapsed'] },
+  { id:1, name:'Marcus Thompson', init:'MT', color:'#6366F1', tier:'platinum', loyalty:91, ltv:8240, risk:8,  section:'Sec 120', ghostRate:'6%',  lastContact:'2 days ago',  attend:16, party:3, tags:['Family','Jersey Buyer','Social'],
+    pricePoint:142, preferredZone:'Lower Bowl · Sideline', partyType:'Family (2 adults, 1 child)', upgradeHistory:['Sec 118→Sec 108 (+$18)','Row 4→Row 1 (+$12)','Club upgrade (+$35)'] },
+  { id:2, name:'Sarah Chen',      init:'SC', color:'#0EA5E9', tier:'platinum', loyalty:88, ltv:11200, risk:12, section:'Sec 108', ghostRate:'12%', lastContact:'1 day ago',   attend:14, party:2, tags:['Premium','Early Arrival'],
+    pricePoint:220, preferredZone:'Club Level · Corner',    partyType:'Couple',                       upgradeHistory:['Floor seats (+$62)','VIP parking add-on','Lounge access (+$45)'] },
+  { id:3, name:'Priya Kapoor',    init:'PK', color:'#F43F5E', tier:'at-risk',  loyalty:44, ltv:6840,  risk:74, section:'Sec 133', ghostRate:'56%', lastContact:'3 weeks ago', attend:7,  party:4, tags:['At-Risk','Family'],
+    pricePoint:88,  preferredZone:'Upper Sideline',         partyType:'Family (2 adults, 2 children)', upgradeHistory:['No upgrades this season'] },
+  { id:4, name:'James Williams',  init:'JW', color:'#10B981', tier:'gold',     loyalty:71, ltv:4120,  risk:23, section:'Sec 215', ghostRate:'25%', lastContact:'5 days ago',  attend:12, party:1, tags:['Solo','Merch Buyer'],
+    pricePoint:105, preferredZone:'Upper Bowl · Midfield',  partyType:'Solo',                         upgradeHistory:['Sec 230→Sec 215 (+$8)','Prime-time seat hold'] },
+  { id:5, name:'David Park',      init:'DP', color:'#F59E0B', tier:'silver',   loyalty:58, ltv:2100,  risk:41, section:'Sec 302', ghostRate:'33%', lastContact:'2 weeks ago', attend:8,  party:2, tags:['Casual','Price Sensitive'],
+    pricePoint:62,  preferredZone:'Upper Corner',           partyType:'Couple',                       upgradeHistory:['Took 10% flash offer (rain game)'] },
+  { id:6, name:'Amanda Foster',   init:'AF', color:'#8B5CF6', tier:'gold',     loyalty:76, ltv:5380,  risk:19, section:'Sec 118', ghostRate:'19%', lastContact:'3 days ago',  attend:13, party:4, tags:['Family','Food','Social'],
+    pricePoint:128, preferredZone:'Lower Bowl · End Zone',  partyType:'Family (2 adults, 2 children)', upgradeHistory:['Sec 122→Sec 118 (+$14)','Food bundle add-on','Group premium'] },
+  { id:7, name:'Robert Kim',      init:'RK', color:'#EC4899', tier:'at-risk',  loyalty:38, ltv:3200,  risk:81, section:'Sec 228', ghostRate:'62%', lastContact:'1 month ago', attend:5,  party:2, tags:['At-Risk','Lapsed'],
+    pricePoint:72,  preferredZone:'Upper Bowl',             partyType:'Couple',                       upgradeHistory:['No upgrades — price sensitive'] },
+  { id:8, name:'Lisa Martinez',   init:'LM', color:'#14B8A6', tier:'bronze',   loyalty:29, ltv:640,   risk:55, section:'Sec 418', ghostRate:'75%', lastContact:'6 weeks ago', attend:3,  party:1, tags:['Casual','Lapsed'],
+    pricePoint:45,  preferredZone:'Upper Deck',             partyType:'Solo',                         upgradeHistory:['Took 25% flash offer (Wk 3)'] },
 ];
 
 var ghostFans = [
@@ -39,6 +67,50 @@ var ghostFans = [
   { name:'Nina Osei',      section:'122-B-5',  rate:'44%', nextProb:'58%', last:'10 days',  action:'Email + SMS' },
   { name:'David Park',     section:'302-C-9',  rate:'33%', nextProb:'45%', last:'2 weeks',  action:'Reminder Push' },
 ];
+
+// ── friends nearby mock data ──────────────────────────────────────────────────
+var friendShareData = [
+  { fan:'Marcus Thompson', nearbyFriends:4, distance:'1.8 mi', linkSent:true,  converted:2, revenue:284 },
+  { fan:'Sarah Chen',      nearbyFriends:2, distance:'3.2 mi', linkSent:true,  converted:1, revenue:220 },
+  { fan:'Amanda Foster',   nearbyFriends:3, distance:'0.9 mi', linkSent:true,  converted:1, revenue:128 },
+  { fan:'James Williams',  nearbyFriends:1, distance:'4.1 mi', linkSent:false, converted:0, revenue:0   },
+  { fan:'David Park',      nearbyFriends:2, distance:'2.7 mi', linkSent:true,  converted:0, revenue:0   },
+];
+
+// ── not-yet-arrived mock data ─────────────────────────────────────────────────
+var notArrivedData = [
+  { fan:'Robert Kim',      section:'Sec 228', risk:'81%', ping:'3.4 mi from stadium',  action:'Flash Offer' },
+  { fan:'Lisa Martinez',   section:'Sec 418', risk:'75%', ping:'No signal · 45 min',  action:'SMS Alert' },
+  { fan:'Priya Kapoor',    section:'Sec 133', risk:'62%', ping:'7.1 mi from stadium',  action:'Incentive Push' },
+  { fan:'Tom Bradley',     section:'Sec 122', risk:'58%', ping:'Parked · P-7 garage',  action:'Reminder' },
+  { fan:'Nina Osei',       section:'Sec 122', risk:'51%', ping:'1.2 mi from stadium',  action:'Reminder' },
+  { fan:'David Park',      section:'Sec 302', risk:'44%', ping:'En route · ETA 28 min',action:'Monitor' },
+  { fan:'Carlos Rivera',   section:'Sec 311', risk:'40%', ping:'0.6 mi from stadium',  action:'Monitor' },
+  { fan:'Jenny Wu',        section:'Sec 204', risk:'36%', ping:'At tailgate lot',       action:'Monitor' },
+  { fan:'Mike Torres',     section:'Sec 415', risk:'34%', ping:'2.8 mi from stadium',  action:'Monitor' },
+  { fan:'Amy Johnson',     section:'Sec 318', risk:'28%', ping:'Gate C queue',          action:'None' },
+];
+
+// ── UGC leaderboard mock data ─────────────────────────────────────────────────
+var ugcLeaderboardData = [
+  { name:'Marcus Thompson', tier:'platinum', platform:'Instagram', posts:8, impressions:'142K', pts:4000, revenue:340 },
+  { name:'Sarah Chen',      tier:'platinum', platform:'TikTok',    posts:5, impressions:'310K', pts:2500, revenue:220 },
+  { name:'Amanda Foster',   tier:'gold',     platform:'Instagram', posts:6, impressions:'84K',  pts:3000, revenue:180 },
+  { name:'James Williams',  tier:'gold',     platform:'X',         posts:4, impressions:'28K',  pts:2000, revenue:105 },
+  { name:'Keisha Brown',    tier:'platinum', platform:'TikTok',    posts:11,impressions:'520K', pts:5500, revenue:480 },
+  { name:'Tyler Nguyen',    tier:'silver',   platform:'Instagram', posts:3, impressions:'18K',  pts:1500, revenue:62  },
+  { name:'Rachel Park',     tier:'gold',     platform:'Instagram', posts:5, impressions:'67K',  pts:2500, revenue:142 },
+  { name:'Omar Hassan',     tier:'silver',   platform:'X',         posts:2, impressions:'9K',   pts:1000, revenue:45  },
+  { name:'Mia Rodriguez',   tier:'platinum', platform:'TikTok',    posts:9, impressions:'218K', pts:4500, revenue:310 },
+  { name:'Ben Clarke',      tier:'gold',     platform:'Facebook',  posts:3, impressions:'12K',  pts:1500, revenue:78  },
+];
+
+// ── social hourly mock data ───────────────────────────────────────────────────
+var socialHourlyData = {
+  labels: ['10am','11am','12pm','1pm (kickoff)','2pm','3pm','4pm (final)','5pm'],
+  posts:  [120, 380, 820, 2400, 1840, 1200, 3100, 1640],
+  impressions: [18000, 52000, 118000, 380000, 290000, 180000, 480000, 248000],
+};
 
 // ── API base (same origin in prod; localhost:8000 when opening frontend directly) ──
 var API_BASE = (window.location.port === '5175' || window.location.protocol === 'file:')
@@ -85,6 +157,8 @@ function showPage(id, el) {
   if (el) el.classList.add('active');
   chartsInit = false;
   setTimeout(initCharts, 60);
+  if (id === 'gameday') { buildEntryFeed(); buildFriendShareTable(); loadPricingData(); }
+  if (id === 'social')  { buildSocialHub(); }
 }
 
 function updateTeam(val) {
@@ -242,7 +316,8 @@ function showFanDetail(id) {
     '<div style="font-size:0.88rem;font-weight:600">' + f.ghostRate + '</div>' +
     '<div class="progress-bar" style="margin-bottom:1.2rem"><div class="progress-fill" style="width:' + f.ghostRate + ';background:' + (parseInt(f.ghostRate)>50?RED:parseInt(f.ghostRate)>25?ORANGE:GREEN) + '"></div></div>' +
     '<div class="insight" style="margin-bottom:0.8rem"><div class="insight-label">AI Recommendation</div><div class="insight-text">' + getFanRec(f) + '</div></div>' +
-    '<div style="display:flex;gap:0.5rem;flex-wrap:wrap"><button class="btn-sm btn-gold">Send Offer</button><button class="btn-sm btn-outline">Full History</button><button class="btn-sm btn-outline">Flag Outreach</button></div>';
+    getSeatIntelHTML(f) +
+    '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.8rem"><button class="btn btn-gold">Send Offer</button><button class="btn btn-out">Full History</button><button class="btn btn-out">Flag Outreach</button></div>';
 }
 
 function getFanRec(f) {
@@ -625,12 +700,107 @@ function initCharts() {
       cutout:'70%'
     }
   });
+
+  // ─── ENTRY FEED chart ──────────────────────────────────────────────────────
+  mk('entryFeedChart', {
+    type: 'line',
+    data: {
+      labels: ['T-3hr','T-2.5hr','T-2hr','T-1.5hr','T-1hr','T-45min','T-30min','T-15min','Kickoff'],
+      datasets: [
+        { label:'Expected', data:[0,4200,14800,31400,48200,56800,62100,65400,68500],
+          borderColor:GOLD, borderDash:[6,4], borderWidth:2, fill:false, pointRadius:0 },
+        { label:'Actual',   data:[0,3800,13200,29800,45600,54800,61204,null,null],
+          borderColor:GREEN, borderWidth:2.5, fill:false, tension:0.3,
+          backgroundColor:'rgba(34,197,94,0.08)' },
+      ]
+    },
+    options: {
+      plugins:{ legend:{ labels:{ color:MUTED, font:{size:11} } } },
+      scales: {
+        x: { ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } },
+        y: { ticks:{ color:MUTED, font:{size:10}, callback:function(v){ return (v/1000).toFixed(0)+'K'; } }, grid:{ color:GRID } }
+      }
+    }
+  });
+
+  // ─── PRICING chart ────────────────────────────────────────────────────────
+  mk('pricingChart', {
+    type:'bar',
+    data: {
+      labels: ['No discount','$10 off (8%)','$15 off (12%)','$20 off (16%)','$30 off (25%)','$40 off (33%)'],
+      datasets: [{
+        label:'Est. Seats Filled',
+        data: [820, 1040, 1280, 1560, 1820, 1920],
+        backgroundColor: [MUTED, '#3B82F680', BLUE, GOLD2, GOLD, GREEN],
+        borderRadius:4
+      }]
+    },
+    options: {
+      plugins:{ legend:{ display:false } },
+      scales: {
+        x:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } },
+        y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID }, title:{ display:true, text:'Seats Filled', color:MUTED, font:{size:11} } }
+      }
+    }
+  });
+
+  // ─── SOCIAL PLATFORM chart ────────────────────────────────────────────────
+  mk('socialPlatformChart', {
+    type:'doughnut',
+    data:{
+      labels:['Instagram','TikTok','X / Twitter','Facebook'],
+      datasets:[{ data:[38,28,22,12], backgroundColor:[PURPLE,'#F97316','#1DA1F2','#1877F2'], borderWidth:0 }]
+    },
+    options:{ plugins:{ legend:{ labels:{ color:MUTED, font:{size:11} } } }, cutout:'55%' }
+  });
+
+  // ─── SOCIAL POST TIMELINE chart ───────────────────────────────────────────
+  mk('socialPostChart', {
+    type:'bar',
+    data:{
+      labels: socialHourlyData.labels,
+      datasets:[
+        { type:'bar',  label:'Posts',       data:socialHourlyData.posts,
+          backgroundColor:'rgba(168,85,247,0.55)', yAxisID:'y' },
+        { type:'line', label:'Impressions', data:socialHourlyData.impressions,
+          borderColor:GOLD, borderWidth:2, fill:false, tension:0.4, yAxisID:'y1', pointRadius:3 },
+      ]
+    },
+    options:{
+      plugins:{ legend:{ labels:{ color:MUTED, font:{size:11} } } },
+      scales:{
+        x:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } },
+        y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID }, title:{ display:true, text:'Posts', color:MUTED, font:{size:10} } },
+        y1:{ position:'right', ticks:{ color:MUTED, font:{size:10}, callback:function(v){ return (v/1000).toFixed(0)+'K'; } }, grid:{ drawOnChartArea:false }, title:{ display:true, text:'Impressions', color:MUTED, font:{size:10} } }
+      }
+    }
+  });
+
+  // ─── SOCIAL FUNNEL chart ──────────────────────────────────────────────────
+  mk('socialFunnelChart', {
+    type:'bar',
+    data:{
+      labels:['Impressions (÷100)','Profile Clicks','Ticket Page Visits','Add to Cart','Purchases'],
+      datasets:[{ data:[42000,8400,3200,1840,142], backgroundColor:[PURPLE+'80',BLUE+'80',GOLD+'80',ORANGE+'80',GREEN], borderRadius:4 }]
+    },
+    options:{
+      indexAxis:'y',
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } },
+        y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } }
+      }
+    }
+  });
 }
 
 // ── boot ──────────────────────────────────────────────────────────────────────
 function boot() {
   buildFanTable();
   buildGhostTable();
+  buildEntryFeed();
+  buildFriendShareTable();
+  buildSocialHub();
 
   var statusEl = document.getElementById('data-status');
   if (statusEl) statusEl.textContent = 'Loading real data…';
@@ -959,3 +1129,211 @@ function runPredictor() {
 }
 
 boot();
+
+// ════════════════════════════════════════════════════════════════════════════
+// FEATURE 2 — Seat Intelligence & Price Point Profile
+// ════════════════════════════════════════════════════════════════════════════
+
+function getPriceSensitivity(f) {
+  // High LTV + low risk = low sensitivity (will pay full price)
+  // Low LTV + high risk = high sensitivity (needs a discount)
+  return Math.round(Math.min(100, Math.max(0, (f.risk * 0.6) + ((1 - f.ltv / 12000) * 40))));
+}
+
+function getSeatIntelHTML(f) {
+  var sensitivity = getPriceSensitivity(f);
+  var sensColor   = sensitivity > 66 ? RED : sensitivity > 33 ? ORANGE : GREEN;
+  var sensLabel   = sensitivity > 66 ? 'High — needs incentive' : sensitivity > 33 ? 'Moderate' : 'Low — pays full price';
+  var partyIcons  = f.partyType && f.partyType.indexOf('Family') >= 0 ? '👨‍👩‍👧 ' :
+                    f.partyType && f.partyType.indexOf('Couple') >= 0 ? '👫 ' : '🧑 ';
+  var upgradeRows = (f.upgradeHistory || ['No upgrade history']).map(function(u) {
+    return '<div style="font-size:0.77rem;padding:3px 0;border-bottom:1px solid var(--border)">' + u + '</div>';
+  }).join('');
+  var bestDiscount = sensitivity > 66 ? '20–25%' : sensitivity > 33 ? '10–15%' : '0–8%';
+
+  return '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">' +
+    '<div class="stat-label" style="font-size:0.7rem;margin-bottom:0.6rem">SEAT INTELLIGENCE</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:0.8rem">' +
+      '<div><div class="stat-label" style="font-size:0.68rem">Preferred Zone</div>' +
+        '<div style="font-size:0.85rem;font-weight:600">' + (f.preferredZone || f.section) + '</div></div>' +
+      '<div><div class="stat-label" style="font-size:0.68rem">Avg Price Point</div>' +
+        '<div style="font-size:0.85rem;font-weight:600;color:var(--gold)">$' + (f.pricePoint || '—') + ' / ticket</div></div>' +
+      '<div><div class="stat-label" style="font-size:0.68rem">Party Composition</div>' +
+        '<div style="font-size:0.82rem">' + partyIcons + (f.partyType || 'Party of ' + f.party) + '</div></div>' +
+      '<div><div class="stat-label" style="font-size:0.68rem">Best Offer Trigger</div>' +
+        '<div style="font-size:0.82rem;font-weight:600">' + bestDiscount + ' discount</div></div>' +
+    '</div>' +
+    '<div class="stat-label" style="font-size:0.68rem;margin-bottom:3px">Price Sensitivity</div>' +
+    '<div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem">' +
+      '<div class="pbar" style="flex:1"><div class="pfill" style="width:' + sensitivity + '%;background:' + sensColor + '"></div></div>' +
+      '<span style="font-size:0.77rem;color:' + sensColor + ';font-weight:600">' + sensitivity + '/100</span>' +
+      '<span style="font-size:0.72rem;color:var(--muted)">' + sensLabel + '</span>' +
+    '</div>' +
+    '<div class="stat-label" style="font-size:0.68rem;margin-bottom:3px">Upgrade History</div>' +
+    upgradeRows +
+  '</div>';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FEATURE 4 — Real-Time Entry / Check-In Feed
+// ════════════════════════════════════════════════════════════════════════════
+
+function buildEntryFeed() {
+  var tbody = document.getElementById('notArrivedBody');
+  if (!tbody) return;
+  tbody.innerHTML = notArrivedData.map(function(row) {
+    var riskNum = parseInt(row.risk);
+    var riskColor = riskNum > 60 ? RED : riskNum > 40 ? ORANGE : MUTED;
+    var btnClass  = riskNum > 60 ? 'btn-gold' : riskNum > 40 ? 'btn-blue' : 'btn-out';
+    return '<tr>' +
+      '<td><strong>' + row.fan + '</strong></td>' +
+      '<td>' + row.section + '</td>' +
+      '<td style="color:' + riskColor + ';font-weight:700">' + row.risk + '</td>' +
+      '<td style="font-size:0.77rem;color:var(--muted)">' + row.ping + '</td>' +
+      '<td><button class="btn ' + btnClass + '" style="font-size:0.68rem">' + row.action + '</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FEATURE 1 — Dynamic Pricing Engine
+// ════════════════════════════════════════════════════════════════════════════
+
+function loadPricingData() {
+  var sport = activeSport();
+  if (isUnsupportedSport()) { renderPricingFallback(); return; }
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_BASE + '/api/pricing/' + ACTIVE_TEAM + '?t=' + Date.now());
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      try { renderPricingTable(JSON.parse(xhr.responseText)); } catch(e) { renderPricingFallback(); }
+    } else { renderPricingFallback(); }
+  };
+  xhr.onerror = function() { renderPricingFallback(); };
+  xhr.send();
+}
+
+function renderPricingFallback() {
+  // Use mock data if API unreachable
+  var mockSections = [];
+  var sections = ['Sec 101','Sec 102','Sec 103','Sec 104','Sec 105','Sec 106','Sec 107','Sec 108','Sec 109','Sec 110'];
+  var risks     = [0.42, 0.28, 0.14, 0.38, 0.22, 0.16, 0.35, 0.19, 0.45, 0.31];
+  sections.forEach(function(s, i) {
+    var r = risks[i];
+    var disc = r > 0.35 ? 25 : r > 0.25 ? 15 : r > 0.15 ? 8 : 0;
+    mockSections.push({ section:s, seats_remaining:Math.round(r*685), ghost_risk:r, discount_pct:disc, suggested_price:Math.round(120*(1-disc/100)) });
+  });
+  renderPricingTable({ sections:mockSections, seats_remaining:1847, recommended_discount_pct:15, est_revenue_recovered:31000 });
+}
+
+function renderPricingTable(data) {
+  setEl('pricing-seats', (data.seats_remaining || 0).toLocaleString());
+  setEl('pricing-discount', (data.recommended_discount_pct || 0) + '%');
+  setEl('pricing-revenue', '$' + Math.round((data.est_revenue_recovered || 0) / 1000) + 'K');
+
+  var tbody = document.getElementById('pricingTableBody');
+  if (tbody && data.sections) {
+    tbody.innerHTML = data.sections.map(function(s) {
+      var riskColor = s.ghost_risk > 0.35 ? RED : s.ghost_risk > 0.25 ? ORANGE : GREEN;
+      var discBadge = s.discount_pct > 0
+        ? '<span style="color:' + GOLD + ';font-weight:700">-' + s.discount_pct + '%</span>'
+        : '<span style="color:' + GREEN + ';font-weight:600">Full price</span>';
+      return '<tr>' +
+        '<td><strong>' + s.section + '</strong></td>' +
+        '<td>' + (s.seats_remaining||0) + '</td>' +
+        '<td style="color:' + riskColor + ';font-weight:700">' + Math.round(s.ghost_risk*100) + '%</td>' +
+        '<td>' + discBadge + '</td>' +
+        '<td style="font-weight:700;color:var(--gold)">$' + (s.suggested_price||'—') + '</td>' +
+        '<td><button class="btn btn-blue" style="font-size:0.68rem">Deploy</button></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  var insight = document.getElementById('pricing-insight');
+  if (insight) {
+    var disc = data.recommended_discount_pct || 15;
+    var rev  = data.est_revenue_recovered || 0;
+    insight.innerHTML = 'Current ghost risk warrants a <strong>' + disc + '% discount</strong> across high-risk sections. ' +
+      'Deploying now to the fan waitlist (2,800 fans) fills remaining seats within <strong>18 minutes</strong> on average. ' +
+      'Estimated revenue recovered: <strong>$' + (rev/1000).toFixed(0) + 'K</strong>. ' +
+      'Platinum fans receive priority access with loyalty points bonus instead of price reduction.';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FEATURE 3 — Friends Nearby / Geo-Sharing
+// ════════════════════════════════════════════════════════════════════════════
+
+function buildFriendShareTable() {
+  var tbody = document.getElementById('friendShareBody');
+  if (!tbody) return;
+  tbody.innerHTML = friendShareData.map(function(row) {
+    var sentBadge = row.linkSent
+      ? '<span style="color:' + GREEN + ';font-weight:600">✓ Sent</span>'
+      : '<button class="btn btn-purple" style="font-size:0.68rem">Send Link</button>';
+    var convBadge = row.converted > 0
+      ? '<span style="color:' + GREEN + ';font-weight:700">' + row.converted + ' bought</span>'
+      : '<span style="color:' + MUTED + '">—</span>';
+    return '<tr>' +
+      '<td><strong>' + row.fan + '</strong></td>' +
+      '<td><strong>' + row.nearbyFriends + '</strong> friends</td>' +
+      '<td style="font-size:0.8rem;color:var(--muted)">' + row.distance + '</td>' +
+      '<td>' + sentBadge + '</td>' +
+      '<td>' + convBadge + '</td>' +
+      '<td style="color:var(--gold);font-weight:700">' + (row.revenue > 0 ? '$' + row.revenue : '—') + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FEATURE 5 — Social Hub
+// ════════════════════════════════════════════════════════════════════════════
+
+function buildSocialHub() {
+  // UGC Leaderboard
+  var tbody = document.getElementById('ugcLeaderBody');
+  if (tbody) {
+    var tierMap = { platinum:'t-plat', gold:'t-gold', silver:'t-silv', bronze:'t-bron' };
+    var platMap = { Instagram:'🟣', TikTok:'🎵', 'X':'✖', Facebook:'🔵' };
+    tbody.innerHTML = ugcLeaderboardData.map(function(row, i) {
+      var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '.';
+      return '<tr>' +
+        '<td>' + medal + ' <strong>' + row.name + '</strong></td>' +
+        '<td><span class="tier ' + (tierMap[row.tier]||'t-bron') + '">' + row.tier + '</span></td>' +
+        '<td>' + (platMap[row.platform]||'📱') + ' ' + row.platform + '</td>' +
+        '<td style="font-weight:600">' + row.posts + '</td>' +
+        '<td style="color:var(--blue);font-weight:600">' + row.impressions + '</td>' +
+        '<td style="color:var(--gold);font-weight:600">' + row.pts.toLocaleString() + ' pts</td>' +
+        '<td style="color:var(--green);font-weight:700">$' + row.revenue + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FEATURE 6 — NBA / IndyCar unsupported sport overlay
+// ════════════════════════════════════════════════════════════════════════════
+
+// Patch refreshRealDataPanels to show coming-soon for unsupported sports
+var _origRefresh = refreshRealDataPanels;
+refreshRealDataPanels = function() {
+  if (!isUnsupportedSport()) { _origRefresh(); return; }
+  var cfg = NBA_CONFIGS[ACTIVE_TEAM] || INDYCAR_CONFIGS[ACTIVE_TEAM] || {};
+  var sport = activeSport();
+  var sportLabel = sport === 'basketball' ? '🏀 NBA' : '🏎 IndyCar';
+  var msg = '<div style="text-align:center;padding:2rem;color:var(--muted)">' +
+    '<div style="font-size:2rem;margin-bottom:0.5rem">' + (sport === 'basketball' ? '🏀' : '🏎') + '</div>' +
+    '<div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.5rem">' + (cfg.name || ACTIVE_TEAM) + '</div>' +
+    '<div style="font-size:0.85rem;margin-bottom:1rem">' + sportLabel + ' scraper module in development</div>' +
+    '<div style="font-size:0.78rem">Venue capacity: <strong>' + (cfg.capacity||'—').toLocaleString() + '</strong> · ' +
+    'Base ticket price: <strong>$' + (cfg.base_price||'—') + '</strong></div>' +
+    '<div style="margin-top:1rem;font-size:0.75rem;color:var(--gold)">All FanIQ models apply directly — plug in ' + sportLabel + ' data to activate full dashboard.</div>' +
+  '</div>';
+  // Apply placeholder to all real-data-dependent elements
+  ['real-avg-att','real-fill-pct','real-ghost-pct','real-record','real-venue','real-capacity',
+   'real-sentiment','overview-sub'].forEach(function(id){ setEl(id, sport === 'basketball' ? '🏀 NBA' : '🏎'); });
+  var newsEl = document.getElementById('real-news-feed');
+  if (newsEl) newsEl.innerHTML = msg;
+  var histEl = document.getElementById('real-history');
+  if (histEl) histEl.innerHTML = '';
+};

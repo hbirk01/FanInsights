@@ -123,6 +123,7 @@
     <div class="nav-tab" onclick="showPage('ltv',this)">Lifetime Value</div>
     <div class="nav-tab" onclick="showPage('predict',this)">Predictions</div>
     <div class="nav-tab" onclick="showPage('model',this)">🔬 Model</div>
+    <div class="nav-tab" onclick="showPage('social',this)">📲 Social Hub</div>
   </div>
   <div class="nav-right">
     <select class="team-selector" onchange="updateTeam(this.value)">
@@ -139,6 +140,16 @@
         <option value="cardinals">St. Louis Cardinals</option>
         <option value="pirates">Pittsburgh Pirates</option>
         <option value="dodgers">Los Angeles Dodgers</option>
+      </optgroup>
+      <optgroup label="🏀 NBA">
+        <option value="lakers">Los Angeles Lakers</option>
+        <option value="warriors">Golden State Warriors</option>
+        <option value="celtics">Boston Celtics</option>
+        <option value="heat">Miami Heat</option>
+      </optgroup>
+      <optgroup label="🏎 IndyCar">
+        <option value="indy500">Indianapolis 500</option>
+        <option value="long_beach">Long Beach GP</option>
       </optgroup>
     </select>
     <span class="badge-pwc">PwC</span>
@@ -177,6 +188,7 @@
       <div class="alert a-loc"><div class="aicon">📍</div><div class="abody"><div class="atitle">Fan Cluster — 6 fans within 8 mi, 3h pre-kickoff</div><div class="adesc">Marcus T., Priya K., and 4 others — none have tickets.</div><div class="aact"><button class="btn btn-blue">Geo-Targeted Offer</button></div></div></div>
       <div class="alert a-opp"><div class="aicon">💡</div><div class="abody"><div class="atitle">31 Platinum fans dropped &gt;15 loyalty pts this week</div><div class="adesc">Correlated with injury report + losing streak. Recommend re-engagement.</div><div class="aact"><button class="btn btn-green">Launch Recovery Flow</button></div></div></div>
       <div class="alert a-soc"><div class="aicon">📲</div><div class="abody"><div class="atitle">Post-Win Social Surge — 4,200 fans active</div><div class="adesc">90-min window open. Push incentive to top 500 influencer-tier fans.</div><div class="aact"><button class="btn btn-purple">Activate Campaign</button></div></div></div>
+      <div class="alert a-soc"><div class="aicon">👥</div><div class="abody"><div class="atitle">3 Fans Have 8 Nearby Friends Without Tickets</div><div class="adesc">Marcus T., Sarah C., Amanda F. — friends within 5 mi, no tickets. Auto-share links ready. Est. 2.4 purchases at avg $142.</div><div class="aact"><button class="btn btn-purple">Send Share Links</button><button class="btn btn-out">View Network</button></div></div></div>
     </div>
   </div>
 </div>
@@ -360,6 +372,114 @@
     </div>
   </div>
   <div class="insight"><div class="insight-label">🤖 FanIQ AI — Real Injury Data Integrated</div><div class="insight-text">Fans who pre-order food are <strong>3.1× more likely</strong> to buy merch before halftime. Push jersey offer T-2 min halftime to 1,840 food-order completers = est. <strong>$42K incremental revenue</strong>. Cross-reference: live injury report shows Nick Bosa <em>Questionable</em> — push "Support the Team" bundle as emotional hook.</div></div>
+
+  <!-- ── ENTRY / CHECK-IN FEED ─────────────────────────────────────────── -->
+  <div class="sh" style="margin-top:2rem"><h1>Real-Time Entry &amp; Check-In Feed</h1><p>Gate scan data · Arrival curve vs expected · Ghost risk escalation triggers</p></div>
+  <div class="g4 mb">
+    <div class="stat-card"><div class="stat-label">Checked In <span class="rb">Live</span></div><div class="stat-value" style="color:var(--green)" id="entry-checkedin">61,204</div><div class="stat-sub">of 68,500 expected</div></div>
+    <div class="stat-card"><div class="stat-label">Not Yet Arrived</div><div class="stat-value" style="color:var(--orange)" id="entry-missing">7,296</div><div class="stat-sub">T-45 min to kickoff</div></div>
+    <div class="stat-card"><div class="stat-label">Ghost Risk Threshold</div><div class="stat-value" style="color:var(--red)">847</div><div class="stat-sub">Auto-offer triggered at T-60</div></div>
+    <div class="stat-card"><div class="stat-label">Arrival Rate</div><div class="stat-value" style="color:var(--blue)">+2,140<span style="font-size:0.9rem">/hr</span></div><div class="stat-sub">On pace for 94.2% fill</div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Cumulative Arrivals vs Expected Curve</div><span class="chip">🟢 Live</span></div>
+      <canvas id="entryFeedChart" height="180"></canvas>
+      <div class="insight" style="margin-top:0.8rem"><div class="insight-label">Auto-Trigger Logic</div><div class="insight-text">At <strong>T-60min</strong>, 847 fans flagged not-arrived → flash offer deployed to waitlist (148 seats at 20% discount). Avg fill time: <strong>18 min</strong>. Est. revenue recovered: <strong>$18,400</strong>.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">High Risk — Not Yet Arrived</div><span style="font-size:0.74rem;color:var(--muted)">Sorted by ghost risk</span></div>
+      <table class="ftable"><thead><tr><th>Fan</th><th>Section</th><th>Risk</th><th>Last Ping</th><th>Action</th></tr></thead>
+      <tbody id="notArrivedBody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ── DYNAMIC PRICING ENGINE ─────────────────────────────────────────── -->
+  <div class="sh" style="margin-top:2rem"><h1>Dynamic Pricing Engine</h1><p>Inventory × demand × fan tier → real-time ticket pricing recommendations</p></div>
+  <div class="g4 mb">
+    <div class="stat-card"><div class="stat-label">Seats Remaining <span class="rb">Model</span></div><div class="stat-value" style="color:var(--orange)" id="pricing-seats">1,847</div><div class="stat-sub">Of 68,500 capacity</div></div>
+    <div class="stat-card"><div class="stat-label">Time to Kickoff</div><div class="stat-value" style="color:var(--blue)">2h 14m</div><div class="stat-sub">Discount window open</div></div>
+    <div class="stat-card"><div class="stat-label">Recommended Discount</div><div class="stat-value" style="color:var(--gold)" id="pricing-discount">15%</div><div class="stat-sub">Based on ghost risk + demand</div></div>
+    <div class="stat-card"><div class="stat-label">Est. Revenue Recovered</div><div class="stat-value" style="color:var(--green)" id="pricing-revenue">$31K</div><div class="stat-sub">If all remaining seats filled</div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Section Pricing Recommendations <span class="rb">API</span></div></div>
+      <table class="ftable"><thead><tr><th>Section</th><th>Seats Left</th><th>Ghost Risk</th><th>Discount</th><th>Price</th><th></th></tr></thead>
+      <tbody id="pricingTableBody"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Discount Tier vs Expected Fill</div></div>
+      <canvas id="pricingChart" height="220"></canvas>
+      <div class="insight" style="margin-top:0.8rem"><div class="insight-label">FanIQ Pricing AI</div><div class="insight-text" id="pricing-insight">Loading pricing model…</div></div>
+    </div>
+  </div>
+
+  <!-- ── FRIENDS NEARBY / GEO SHARING ───────────────────────────────────── -->
+  <div class="sh" style="margin-top:2rem"><h1>Friends Nearby — Ticket Sharing Network</h1><p>Geo-proximity detection · Auto-generated share links · Viral conversion tracking</p></div>
+  <div class="g3 mb">
+    <div class="stat-card"><div class="stat-label">Friends Near Stadium</div><div class="stat-value" style="color:var(--purple)">34</div><div class="stat-sub">Within 5 mi, no ticket</div></div>
+    <div class="stat-card"><div class="stat-label">Share Links Sent</div><div class="stat-value" style="color:var(--blue)">18</div><div class="stat-sub">Last 2 hours</div></div>
+    <div class="stat-card"><div class="stat-label">Conversions</div><div class="stat-value" style="color:var(--green)">7</div><div class="stat-sub">$994 · viral coeff 0.39</div></div>
+  </div>
+  <div class="card mb">
+    <div class="card-header"><div class="card-title">Fan Friend Network — Proximity &amp; Share Status</div><div class="chip">Auto-refreshing</div></div>
+    <table class="ftable"><thead><tr><th>Season Holder</th><th>Nearby Friends</th><th>Proximity</th><th>Links Sent</th><th>Converted</th><th>Revenue</th></tr></thead>
+    <tbody id="friendShareBody"></tbody></table>
+    <div class="insight" style="margin-top:1rem"><div class="insight-label">Viral Coefficient</div><div class="insight-text">Each share link generates <strong>0.39 purchases</strong> on average (7 buys / 18 links). With avg party size 2.4, each activated fan-network generates <strong>$338 incremental revenue</strong>. Top referrer tier: Platinum fans convert at 0.61×.</div></div>
+  </div>
+</div>
+
+<!-- ═══════ SOCIAL HUB ═══════ -->
+<div id="page-social" class="page">
+  <div class="sh"><h1>📲 Social Hub — Fan Social Intelligence</h1><p>Connected accounts · UGC tracking · Incentive engine · Social referral funnel</p></div>
+  <div class="g4">
+    <div class="stat-card"><div class="stat-label">Connected Accounts</div><div class="stat-value" style="color:var(--purple)">41,820</div><div class="stat-delta">↑ 57.7% of fan base</div><div class="stat-sub">Instagram · X · TikTok · FB</div></div>
+    <div class="stat-card"><div class="stat-label">Posts This Game <span class="rb">Live</span></div><div class="stat-value" style="color:var(--blue)">8,412</div><div class="stat-delta">↑ 23% vs last home game</div><div class="stat-sub">UGC impressions: 4.2M</div></div>
+    <div class="stat-card"><div class="stat-label">UGC Impressions</div><div class="stat-value" style="color:var(--gold)">4.2M</div><div class="stat-delta">↑ 18% YoY</div><div class="stat-sub">Organic reach via fan posts</div></div>
+    <div class="stat-card"><div class="stat-label">Social Revenue</div><div class="stat-value" style="color:var(--green)">$84K</div><div class="stat-delta">Attributed via UTM + referral</div><div class="stat-sub">Tickets + merch this game</div></div>
+  </div>
+
+  <div class="g2">
+    <div class="card"><div class="card-header"><div class="card-title">Platform Breakdown</div></div><canvas id="socialPlatformChart" height="220"></canvas></div>
+    <div class="card"><div class="card-header"><div class="card-title">Posts &amp; Impressions — Game Day Timeline</div></div><canvas id="socialPostChart" height="220"></canvas></div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-header"><div class="card-title">Active Incentive Campaigns</div><span class="chip">3 live</span></div>
+    <div class="g3">
+      <div class="alert a-soc" style="margin-bottom:0"><div class="aicon">📸</div><div class="abody"><div class="atitle">Win Photo Share → 500 FanIQ Points</div><div class="adesc">Post with #GoNiners at the game. 2,840 fans activated · 1,204 redeemed.</div><div class="aact"><button class="btn btn-purple">View Posts</button></div></div></div>
+      <div class="alert a-loc" style="margin-bottom:0"><div class="aicon">📍</div><div class="abody"><div class="atitle">Gate Check-In Tag → 200 Points</div><div class="adesc">Tag stadium location on any platform. 5,120 check-ins · 3,840 tagged.</div><div class="aact"><button class="btn btn-blue">Boost Campaign</button></div></div></div>
+      <div class="alert a-opp" style="margin-bottom:0"><div class="aicon">🔗</div><div class="abody"><div class="atitle">Story Mention → Friend Discount</div><div class="adesc">Mention a friend in your story → they get 12% off next ticket. 214 referred · 31 purchased.</div><div class="aact"><button class="btn btn-green">Expand Offer</button></div></div></div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">UGC Leaderboard — Top Social Fans</div></div>
+      <table class="ftable"><thead><tr><th>Fan</th><th>Platform</th><th>Posts</th><th>Impressions</th><th>Pts Earned</th><th>Revenue</th></tr></thead>
+      <tbody id="ugcLeaderBody"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Social Referral Funnel</div></div>
+      <canvas id="socialFunnelChart" height="220"></canvas>
+      <div class="insight" style="margin-top:0.8rem"><div class="insight-label">Funnel Efficiency</div><div class="insight-text">Social impressions convert to ticket purchases at <strong>0.34%</strong> — 3.8× higher than paid digital ads. UGC-driven fans have <strong>22% higher LTV</strong> and refer 1.8 additional fans per season.</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Account Connection Rate by Fan Tier</div></div>
+    <table class="ftable">
+      <thead><tr><th>Tier</th><th>Total Fans</th><th>Instagram</th><th>X / Twitter</th><th>TikTok</th><th>Any Connected</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tier t-plat">Platinum</span></td><td>3,620</td><td style="color:var(--green)">91%</td><td style="color:var(--green)">78%</td><td style="color:var(--blue)">62%</td><td style="color:var(--green);font-weight:700">94%</td></tr>
+        <tr><td><span class="tier t-gold">Gold</span></td><td>14,488</td><td style="color:var(--green)">82%</td><td style="color:var(--blue)">61%</td><td style="color:var(--blue)">48%</td><td style="color:var(--green);font-weight:700">87%</td></tr>
+        <tr><td><span class="tier t-silv">Silver</span></td><td>25,354</td><td style="color:var(--blue)">64%</td><td style="color:var(--muted)">42%</td><td style="color:var(--blue)">51%</td><td style="color:var(--blue);font-weight:700">71%</td></tr>
+        <tr><td><span class="tier t-bron">Bronze</span></td><td>28,976</td><td style="color:var(--muted)">38%</td><td style="color:var(--muted)">24%</td><td style="color:var(--blue)">44%</td><td style="color:var(--muted);font-weight:700">52%</td></tr>
+        <tr style="color:var(--gold);font-weight:600"><td>All Tiers</td><td>72,438</td><td>64%</td><td>47%</td><td>49%</td><td style="font-weight:700">57.7%</td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <!-- ═══════ LIFETIME VALUE ═══════ -->
@@ -526,6 +646,16 @@
             <option value="cardinals">St. Louis Cardinals</option>
             <option value="pirates">Pittsburgh Pirates</option>
             <option value="dodgers">Los Angeles Dodgers</option>
+          </optgroup>
+          <optgroup label="🏀 NBA">
+            <option value="lakers">Los Angeles Lakers</option>
+            <option value="warriors">Golden State Warriors</option>
+            <option value="celtics">Boston Celtics</option>
+            <option value="heat">Miami Heat</option>
+          </optgroup>
+          <optgroup label="🏎 IndyCar">
+            <option value="indy500">Indianapolis 500</option>
+            <option value="long_beach">Long Beach GP</option>
           </optgroup>
         </select>
       </div>

@@ -12,6 +12,30 @@ var NFL_TEAMS     = new Set(["sf49ers","chiefs","cowboys","eagles","giants","com
 var NBA_TEAMS     = new Set(["lakers","warriors","celtics","heat"]);
 var INDYCAR_EVENTS = new Set(["indy500","long_beach"]);
 
+// ── per-team config: jersey, hashtag, sport icon ──────────────────────────────
+var TEAM_CONFIG = {
+  // NFL
+  sf49ers:    { jersey:'Purdy #13',     hashtag:'#GoNiners',    icon:'🏈', sport:'NFL' },
+  chiefs:     { jersey:'Mahomes #15',   hashtag:'#ChiefsKingdom', icon:'🏈', sport:'NFL' },
+  cowboys:    { jersey:'Prescott #4',   hashtag:'#DallasCowboys', icon:'🏈', sport:'NFL' },
+  eagles:     { jersey:'Hurts #1',      hashtag:'#FlyEaglesFly',  icon:'🏈', sport:'NFL' },
+  // MLB
+  rockies:    { jersey:'Tovar #11',     hashtag:'#Rockies',      icon:'⚾', sport:'MLB' },
+  yankees:    { jersey:'Judge #99',     hashtag:'#RepBX',        icon:'⚾', sport:'MLB' },
+  cubs:       { jersey:'Suzuki #27',    hashtag:'#ItsDifferentHere', icon:'⚾', sport:'MLB' },
+  cardinals:  { jersey:'Goldschmidt #46',hashtag:'#STLCards',   icon:'⚾', sport:'MLB' },
+  pirates:    { jersey:'Cruz #15',      hashtag:'#LetsGoBucs',   icon:'⚾', sport:'MLB' },
+  dodgers:    { jersey:'Ohtani #17',    hashtag:'#AlwaysLA',     icon:'⚾', sport:'MLB' },
+  // NBA
+  lakers:     { jersey:'LeBron #23',    hashtag:'#LakeShow',     icon:'🏀', sport:'NBA' },
+  warriors:   { jersey:'Curry #30',     hashtag:'#DubNation',    icon:'🏀', sport:'NBA' },
+  celtics:    { jersey:'Tatum #0',      hashtag:'#BleedGreen',   icon:'🏀', sport:'NBA' },
+  heat:       { jersey:'Butler #22',    hashtag:'#HEATCulture',  icon:'🏀', sport:'NBA' },
+  // IndyCar
+  indy500:    { jersey:'Palou #10',     hashtag:'#Indy500',      icon:'🏎', sport:'IndyCar' },
+  long_beach: { jersey:'O\'Ward #5',    hashtag:'#LGPRIX',       icon:'🏎', sport:'IndyCar' },
+};
+
 var NBA_CONFIGS = {
   lakers:   { name:'Los Angeles Lakers',    capacity:19068, base_price:180 },
   warriors: { name:'Golden State Warriors', capacity:18064, base_price:210 },
@@ -177,6 +201,9 @@ function updateTeam(val) {
 function refreshRealDataPanels() {
   var td = teamData();
   if (!td) return;
+
+  // Update all team-specific content site-wide
+  updateTeamContent(td);
 
   var ti = td.team_info || {};
   var stats = td.attendance_stats || {};
@@ -1397,6 +1424,123 @@ function buildSocialHub() {
 // ════════════════════════════════════════════════════════════════════════════
 // FEATURE 6 — NBA / IndyCar unsupported sport overlay
 // ════════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════════════════
+// TEAM-SWITCH: update all hardcoded team references across the site
+// ════════════════════════════════════════════════════════════════════════════
+
+function updateTeamContent(td) {
+  var ti  = td ? (td.team_info || {}) : {};
+  var cfg = TEAM_CONFIG[ACTIVE_TEAM] || TEAM_CONFIG['sf49ers'];
+  var cap = ti.venue_capacity || 68500;
+  var teamName = ti.name || ACTIVE_TEAM;
+  var injuries = (td && td.injuries) || [];
+  var games    = (td && td.games) || [];
+  var homeGames = games.filter(function(g){ return g.is_home; });
+  var lastHome  = homeGames[homeGames.length - 1] || {};
+  var nextOpp   = lastHome.opponent || 'Upcoming Opponent';
+  var won       = td && td.team_info && td.team_info.record
+    ? (parseInt((td.team_info.record||'').split('-')[0]) > parseInt((td.team_info.record||'').split('-')[1]))
+    : true;
+
+  // Jersey ref in Game Day timeline
+  setEl('gameday-jersey-ref', cfg.jersey);
+
+  // Capacity figures
+  setEl('ghost-capacity-sub',    cap.toLocaleString());
+  setEl('entry-capacity-sub',    cap.toLocaleString());
+  setEl('pricing-capacity-sub',  cap.toLocaleString());
+
+  // Ghost seats estimate from real ghost risk
+  var stats = td ? (td.attendance_stats || {}) : {};
+  var ghostPct = stats.avg_ghost_risk || 0.207;
+  setEl('ghost-seats-val', Math.round(ghostPct * cap).toLocaleString());
+
+  // Social Hub hashtag
+  setEl('social-hashtag', cfg.hashtag);
+
+  // Game Day AI insight — uses real injury data
+  buildGameDayInsight(injuries, cfg);
+
+  // Overview alerts — fully dynamic
+  buildOverviewAlerts(td, ti, cfg, nextOpp, won, injuries);
+}
+
+function buildGameDayInsight(injuries, cfg) {
+  var el = document.getElementById('gameday-ai-insight');
+  if (!el) return;
+  var starInjury = injuries.filter(function(i){
+    return i.status === 'Out' || i.status === 'Questionable' || i.status === 'Injured Reserve';
+  })[0];
+  var injText = starInjury
+    ? 'Cross-reference: live injury report shows <strong>' + starInjury.player + '</strong> <em>' + starInjury.status + '</em> — push "Support the Team" bundle as emotional hook.'
+    : 'Team is healthy this week — push premium seat upgrade to capitalise on high fan sentiment.';
+  el.innerHTML = 'Fans who pre-order food are <strong>3.1× more likely</strong> to buy merch before halftime. '
+    + 'Push ' + cfg.jersey + ' jersey offer T-2 min halftime to 1,840 food-order completers = est. <strong>$42K incremental revenue</strong>. '
+    + injText;
+}
+
+function buildOverviewAlerts(td, ti, cfg, nextOpp, won, injuries) {
+  var el = document.getElementById('overview-alerts');
+  if (!el) return;
+
+  var teamName = ti.name || ACTIVE_TEAM;
+  var stats    = td ? (td.attendance_stats || {}) : {};
+  var ghostPct = stats.avg_ghost_risk ? Math.round(stats.avg_ghost_risk * 100) : 22;
+  var cap      = ti.venue_capacity || 68500;
+  var ghostSeats = Math.round((stats.avg_ghost_risk || 0.207) * cap);
+  var ghostVal   = Math.round(ghostSeats * 120 * 0.5 / 1000);
+
+  // Sentiment-driven social text
+  var sentiment = td ? (td.sentiment_score || 65) : 65;
+  var socialTitle = sentiment > 70
+    ? 'Post-Win Social Surge — ' + (Math.round(sentiment * 58)).toLocaleString() + ' fans active'
+    : 'Fan Sentiment Push — Engage ' + (Math.round(sentiment * 40)).toLocaleString() + ' active fans';
+
+  // Star injury alert
+  var starInjury = injuries.filter(function(i){
+    return i.status === 'Out' || i.status === 'Questionable' || i.status === 'Injured Reserve';
+  })[0];
+  var injAlert = starInjury
+    ? '<div class="alert a-ghost"><div class="aicon">🏥</div><div class="abody">'
+        + '<div class="atitle">' + starInjury.player + ' — ' + starInjury.status + ' · Loyalty Impact</div>'
+        + '<div class="adesc">Star player injury correlates with +8–14% ghost ticket rate over next 2 home games. FanIQ is pre-triggering retention offers now.</div>'
+        + '<div class="aact"><button class="btn btn-gold">Launch Retention Flow</button></div>'
+      + '</div></div>'
+    : '<div class="alert a-opp"><div class="aicon">💡</div><div class="abody">'
+        + '<div class="atitle">31 Platinum fans dropped &gt;15 loyalty pts this week</div>'
+        + '<div class="adesc">Correlated with recent results. Recommend re-engagement campaign before next home game.</div>'
+        + '<div class="aact"><button class="btn btn-green">Launch Recovery Flow</button></div>'
+      + '</div></div>';
+
+  el.innerHTML =
+    // Ghost ticket alert — real data
+    '<div class="alert a-ghost"><div class="aicon">👻</div><div class="abody">'
+      + '<div class="atitle">' + ghostSeats.toLocaleString() + ' Seats at Ghost Risk — Next Home Game</div>'
+      + '<div class="adesc">' + ghostPct + '% average no-show rate (last 3 home games). Predicted value of filling: $' + ghostVal + 'K.</div>'
+      + '<div class="aact"><button class="btn btn-gold">Trigger Offer</button><button class="btn btn-out">View Fans</button></div>'
+    + '</div></div>'
+    // Geo alert
+    + '<div class="alert a-loc"><div class="aicon">📍</div><div class="abody">'
+      + '<div class="atitle">Fan Cluster — 6 fans within 8 mi, 3h pre-kickoff</div>'
+      + '<div class="adesc">Marcus T., Priya K., and 4 others — none have tickets for ' + teamName + ' next home game.</div>'
+      + '<div class="aact"><button class="btn btn-blue">Geo-Targeted Offer</button></div>'
+    + '</div></div>'
+    // Injury / loyalty alert — real data
+    + injAlert
+    // Social alert — sentiment driven
+    + '<div class="alert a-soc"><div class="aicon">📲</div><div class="abody">'
+      + '<div class="atitle">' + socialTitle + '</div>'
+      + '<div class="adesc">90-min window open. Push ' + cfg.hashtag + ' incentive to top 500 influencer-tier fans.</div>'
+      + '<div class="aact"><button class="btn btn-purple">Activate Campaign</button></div>'
+    + '</div></div>'
+    // Friends nearby
+    + '<div class="alert a-soc"><div class="aicon">👥</div><div class="abody">'
+      + '<div class="atitle">3 Fans Have 8 Nearby Friends Without Tickets</div>'
+      + '<div class="adesc">Marcus T., Sarah C., Amanda F. — friends within 5 mi, no tickets. Auto-share links ready.</div>'
+      + '<div class="aact"><button class="btn btn-purple">Send Share Links</button><button class="btn btn-out">View Network</button></div>'
+    + '</div></div>';
+}
 
 // Patch refreshRealDataPanels to show coming-soon for unsupported sports
 var _origRefresh = refreshRealDataPanels;

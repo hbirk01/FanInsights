@@ -236,11 +236,13 @@
     <div class="card"><div class="card-header"><div class="card-title">Loyalty Score Trend</div><span style="font-size:0.74rem;color:var(--muted)">Real sentiment-adjusted</span></div><canvas id="loyaltyTrendChart" height="180"></canvas></div>
     <div class="card">
       <div class="card-header"><div class="card-title">Real-Time Alerts</div><span class="chip">🟢 Live</span></div>
-      <div class="alert a-ghost"><div class="aicon">👻</div><div class="abody"><div class="atitle">14 Season Holders Not Checked In — Next Home Game</div><div class="adesc">Seats 122-B rows 4–6 likely empty. Predicted value of filling: $3,400.</div><div class="aact"><button class="btn btn-gold">Trigger Offer</button><button class="btn btn-out">View Fans</button></div></div></div>
-      <div class="alert a-loc"><div class="aicon">📍</div><div class="abody"><div class="atitle">Fan Cluster — 6 fans within 8 mi, 3h pre-kickoff</div><div class="adesc">Marcus T., Priya K., and 4 others — none have tickets.</div><div class="aact"><button class="btn btn-blue">Geo-Targeted Offer</button></div></div></div>
-      <div class="alert a-opp"><div class="aicon">💡</div><div class="abody"><div class="atitle">31 Platinum fans dropped &gt;15 loyalty pts this week</div><div class="adesc">Correlated with injury report + losing streak. Recommend re-engagement.</div><div class="aact"><button class="btn btn-green">Launch Recovery Flow</button></div></div></div>
-      <div class="alert a-soc"><div class="aicon">📲</div><div class="abody"><div class="atitle">Post-Win Social Surge — 4,200 fans active</div><div class="adesc">90-min window open. Push incentive to top 500 influencer-tier fans.</div><div class="aact"><button class="btn btn-purple">Activate Campaign</button></div></div></div>
-      <div class="alert a-soc"><div class="aicon">👥</div><div class="abody"><div class="atitle">3 Fans Have 8 Nearby Friends Without Tickets</div><div class="adesc">Marcus T., Sarah C., Amanda F. — friends within 5 mi, no tickets. Auto-share links ready. Est. 2.4 purchases at avg $142.</div><div class="aact"><button class="btn btn-purple">Send Share Links</button><button class="btn btn-out">View Network</button></div></div></div>
+      <div id="overview-alerts">
+        <div class="alert a-ghost"><div class="aicon">👻</div><div class="abody"><div class="atitle">14 Season Holders Not Checked In — Next Home Game</div><div class="adesc">Seats 122-B rows 4–6 likely empty. Predicted value of filling: $3,400.</div><div class="aact"><button class="btn btn-gold">Trigger Offer</button><button class="btn btn-out">View Fans</button></div></div></div>
+        <div class="alert a-loc"><div class="aicon">📍</div><div class="abody"><div class="atitle">Fan Cluster — 6 fans within 8 mi, 3h pre-kickoff</div><div class="adesc">Marcus T., Priya K., and 4 others — none have tickets.</div><div class="aact"><button class="btn btn-blue">Geo-Targeted Offer</button></div></div></div>
+        <div class="alert a-opp"><div class="aicon">💡</div><div class="abody"><div class="atitle">31 Platinum fans dropped &gt;15 loyalty pts this week</div><div class="adesc">Correlated with injury report + losing streak. Recommend re-engagement.</div><div class="aact"><button class="btn btn-green">Launch Recovery Flow</button></div></div></div>
+        <div class="alert a-soc"><div class="aicon">📲</div><div class="abody"><div class="atitle">Post-Win Social Surge — 4,200 fans active</div><div class="adesc">90-min window open. Push incentive to top 500 influencer-tier fans.</div><div class="aact"><button class="btn btn-purple">Activate Campaign</button></div></div></div>
+        <div class="alert a-soc"><div class="aicon">👥</div><div class="abody"><div class="atitle">3 Fans Have 8 Nearby Friends Without Tickets</div><div class="adesc">Marcus T., Sarah C., Amanda F. — friends within 5 mi, no tickets. Auto-share links ready. Est. 2.4 purchases at avg $142.</div><div class="aact"><button class="btn btn-purple">Send Share Links</button><button class="btn btn-out">View Network</button></div></div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -341,7 +343,7 @@
 <div id="page-ghost" class="page">
   <div class="sh"><h1>Ghost Ticket Intelligence</h1><p>Real attendance data + weather model · predict, prevent, recover empty seats</p></div>
   <div class="g4">
-    <div class="stat-card"><div class="stat-label">Ghost Seats This Game</div><div class="stat-value" style="color:var(--red)">1,847</div><div class="stat-sub">Of 68,500 capacity</div></div>
+    <div class="stat-card"><div class="stat-label">Ghost Seats This Game</div><div class="stat-value" style="color:var(--red)" id="ghost-seats-val">1,847</div><div class="stat-sub">Of <span id="ghost-capacity-sub">68,500</span> capacity</div></div>
     <div class="stat-card"><div class="stat-label">Recovered (AI)</div><div class="stat-value" style="color:var(--green)">623</div><div class="stat-sub">Last-minute offers + resale</div></div>
     <div class="stat-card"><div class="stat-label">Revenue Recovered</div><div class="stat-value" style="color:var(--green)">$94K</div><div class="stat-sub">$1.2M season to date</div></div>
     <div class="stat-card"><div class="stat-label">Prediction Accuracy</div><div class="stat-value" style="color:var(--blue)">87.3%</div><div class="stat-sub">48h pre-game model</div></div>
@@ -405,7 +407,7 @@
         <div class="tl-item"><div class="tl-date">10:22 AM · Push opened</div><div class="tl-desc">🌮 <strong>Pre-order:</strong> "3x Tacos + 2 Modelo + 1 lemonade. Gate C pickup." <span class="tag tg">Accepted · $58.40</span></div></div>
         <div class="tl-item"><div class="tl-date">11:48 AM · Gate C entry confirmed</div><div class="tl-desc">✅ <strong>Seat upgrade:</strong> Sec 120 → Sec 108 Row 1 for $12. Party of 3 available.</div></div>
         <div class="tl-item"><div class="tl-date">12:04 PM · Food delivery</div><div class="tl-desc">🍺 <strong>Delivered to Sec 108 Row 1.</strong> Marcus rated 5⭐</div></div>
-        <div class="tl-item"><div class="tl-date">12:31 PM · Halftime</div><div class="tl-desc">👕 <strong>Jersey offer:</strong> "Purdy #13 — $85 (was $105). Deliver to seat." <span class="tag tb">Pending</span></div></div>
+        <div class="tl-item"><div class="tl-date">12:31 PM · Halftime</div><div class="tl-desc">👕 <strong>Jersey offer:</strong> "<span id="gameday-jersey-ref">Purdy #13</span> — $85 (was $105). Deliver to seat." <span class="tag tb">Pending</span></div></div>
         <div class="tl-item"><div class="tl-date">3:48 PM · Post-game (win)</div><div class="tl-desc">📲 <strong>Social:</strong> "Share photo → 500 FanIQ pts. 3 friends nearby — group discount."</div></div>
       </div>
     </div>
@@ -423,12 +425,12 @@
       </div>
     </div>
   </div>
-  <div class="insight"><div class="insight-label">🤖 FanIQ AI — Real Injury Data Integrated</div><div class="insight-text">Fans who pre-order food are <strong>3.1× more likely</strong> to buy merch before halftime. Push jersey offer T-2 min halftime to 1,840 food-order completers = est. <strong>$42K incremental revenue</strong>. Cross-reference: live injury report shows Nick Bosa <em>Questionable</em> — push "Support the Team" bundle as emotional hook.</div></div>
+  <div class="insight"><div class="insight-label">🤖 FanIQ AI — Real Injury Data Integrated</div><div class="insight-text" id="gameday-ai-insight">Fans who pre-order food are <strong>3.1× more likely</strong> to buy merch before halftime. Push jersey offer T-2 min halftime to 1,840 food-order completers = est. <strong>$42K incremental revenue</strong>. Cross-reference: live injury report shows Nick Bosa <em>Questionable</em> — push "Support the Team" bundle as emotional hook.</div></div>
 
   <!-- ── ENTRY / CHECK-IN FEED ─────────────────────────────────────────── -->
   <div class="sh" style="margin-top:2rem"><h1>Real-Time Entry &amp; Check-In Feed</h1><p>Gate scan data · Arrival curve vs expected · Ghost risk escalation triggers</p></div>
   <div class="g4 mb">
-    <div class="stat-card"><div class="stat-label">Checked In <span class="rb">Live</span></div><div class="stat-value" style="color:var(--green)" id="entry-checkedin">61,204</div><div class="stat-sub">of 68,500 expected</div></div>
+    <div class="stat-card"><div class="stat-label">Checked In <span class="rb">Live</span></div><div class="stat-value" style="color:var(--green)" id="entry-checkedin">61,204</div><div class="stat-sub">of <span id="entry-capacity-sub">68,500</span> expected</div></div>
     <div class="stat-card"><div class="stat-label">Not Yet Arrived</div><div class="stat-value" style="color:var(--orange)" id="entry-missing">7,296</div><div class="stat-sub">T-45 min to kickoff</div></div>
     <div class="stat-card"><div class="stat-label">Ghost Risk Threshold</div><div class="stat-value" style="color:var(--red)">847</div><div class="stat-sub">Auto-offer triggered at T-60</div></div>
     <div class="stat-card"><div class="stat-label">Arrival Rate</div><div class="stat-value" style="color:var(--blue)">+2,140<span style="font-size:0.9rem">/hr</span></div><div class="stat-sub">On pace for 94.2% fill</div></div>
@@ -449,7 +451,7 @@
   <!-- ── DYNAMIC PRICING ENGINE ─────────────────────────────────────────── -->
   <div class="sh" style="margin-top:2rem"><h1>Dynamic Pricing Engine</h1><p>Inventory × demand × fan tier → real-time ticket pricing recommendations</p></div>
   <div class="g4 mb">
-    <div class="stat-card"><div class="stat-label">Seats Remaining <span class="rb">Model</span></div><div class="stat-value" style="color:var(--orange)" id="pricing-seats">1,847</div><div class="stat-sub">Of 68,500 capacity</div></div>
+    <div class="stat-card"><div class="stat-label">Seats Remaining <span class="rb">Model</span></div><div class="stat-value" style="color:var(--orange)" id="pricing-seats">1,847</div><div class="stat-sub">Of <span id="pricing-capacity-sub">68,500</span> capacity</div></div>
     <div class="stat-card"><div class="stat-label">Time to Kickoff</div><div class="stat-value" style="color:var(--blue)">2h 14m</div><div class="stat-sub">Discount window open</div></div>
     <div class="stat-card"><div class="stat-label">Recommended Discount</div><div class="stat-value" style="color:var(--gold)" id="pricing-discount">15%</div><div class="stat-sub">Based on ghost risk + demand</div></div>
     <div class="stat-card"><div class="stat-label">Est. Revenue Recovered</div><div class="stat-value" style="color:var(--green)" id="pricing-revenue">$31K</div><div class="stat-sub">If all remaining seats filled</div></div>
@@ -500,7 +502,7 @@
   <div class="card mb">
     <div class="card-header"><div class="card-title">Active Incentive Campaigns</div><span class="chip">3 live</span></div>
     <div class="g3">
-      <div class="alert a-soc" style="margin-bottom:0"><div class="aicon">📸</div><div class="abody"><div class="atitle">Win Photo Share → 500 FanIQ Points</div><div class="adesc">Post with #GoNiners at the game. 2,840 fans activated · 1,204 redeemed.</div><div class="aact"><button class="btn btn-purple">View Posts</button></div></div></div>
+      <div class="alert a-soc" style="margin-bottom:0"><div class="aicon">📸</div><div class="abody"><div class="atitle">Win Photo Share → 500 FanIQ Points</div><div class="adesc">Post with <span id="social-hashtag">#GoNiners</span> at the game. 2,840 fans activated · 1,204 redeemed.</div><div class="aact"><button class="btn btn-purple">View Posts</button></div></div></div>
       <div class="alert a-loc" style="margin-bottom:0"><div class="aicon">📍</div><div class="abody"><div class="atitle">Gate Check-In Tag → 200 Points</div><div class="adesc">Tag stadium location on any platform. 5,120 check-ins · 3,840 tagged.</div><div class="aact"><button class="btn btn-blue">Boost Campaign</button></div></div></div>
       <div class="alert a-opp" style="margin-bottom:0"><div class="aicon">🔗</div><div class="abody"><div class="atitle">Story Mention → Friend Discount</div><div class="adesc">Mention a friend in your story → they get 12% off next ticket. 214 referred · 31 purchased.</div><div class="aact"><button class="btn btn-green">Expand Offer</button></div></div></div>
     </div>

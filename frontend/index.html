@@ -569,26 +569,37 @@
 <div id="page-predict" class="page">
   <div class="sh"><h1>Predictive Intelligence Engine</h1><p>ML models · Real ESPN attendance · Weather signals · NLP sentiment · 2.1M transactions</p></div>
   <div class="g3">
-    <div class="card"><div class="card-header"><div class="card-title">Model Performance</div></div>
-      <table class="st"><tr><td>Churn prediction AUC</td><td style="text-align:right;color:var(--green);font-weight:700">0.91</td></tr><tr><td>Ghost ticket (48h) accuracy</td><td style="text-align:right;color:var(--green);font-weight:700">87.3%</td></tr><tr><td>Purchase propensity precision</td><td style="text-align:right;color:var(--green);font-weight:700">83.1%</td></tr><tr><td>Geo-arrival prediction (±30min)</td><td style="text-align:right;color:var(--green);font-weight:700">79.4%</td></tr><tr><td>Seating preference match</td><td style="text-align:right;color:var(--green);font-weight:700">91.2%</td></tr><tr><td>Party size prediction</td><td style="text-align:right;color:var(--green);font-weight:700">88.6%</td></tr><tr><td>LTV 3yr forecast MAPE</td><td style="text-align:right;color:var(--blue);font-weight:700">11.2%</td></tr><tr><td>Weather ghost uplift R²</td><td style="text-align:right;color:var(--blue);font-weight:700">0.74</td></tr></table>
+    <div class="card"><div class="card-header"><div class="card-title">Model Performance</div><span id="predict-sport-badge" class="chip">NFL</span></div>
+      <table class="st"><tbody id="predict-model-perf">
+        <tr><td>Churn prediction AUC</td><td style="text-align:right;color:var(--green);font-weight:700">0.91</td></tr>
+        <tr><td>Ghost ticket (48h) accuracy</td><td style="text-align:right;color:var(--green);font-weight:700" id="predict-ghost-acc">87.3%</td></tr>
+        <tr><td>Purchase propensity precision</td><td style="text-align:right;color:var(--green);font-weight:700">83.1%</td></tr>
+        <tr><td>Geo-arrival prediction (±30min)</td><td style="text-align:right;color:var(--green);font-weight:700">79.4%</td></tr>
+        <tr><td>Seating preference match</td><td style="text-align:right;color:var(--green);font-weight:700">91.2%</td></tr>
+        <tr><td>Party size prediction</td><td style="text-align:right;color:var(--green);font-weight:700">88.6%</td></tr>
+        <tr><td>Attendance MAPE <span class="rb">Real</span></td><td style="text-align:right;color:var(--blue);font-weight:700" id="predict-att-mape">—</td></tr>
+        <tr><td>Weather ghost uplift R²</td><td style="text-align:right;color:var(--blue);font-weight:700" id="predict-weather-r2">0.74</td></tr>
+      </tbody></table>
     </div>
     <div class="card"><div class="card-header"><div class="card-title">Key Predictive Features</div></div><canvas id="featureImportanceChart" height="210"></canvas></div>
     <div class="card"><div class="card-header"><div class="card-title">Attendance Forecast <span class="rb">Real Baseline</span></div></div><canvas id="attendanceForecastChart" height="210"></canvas></div>
   </div>
   <div class="g2">
     <div class="card"><div class="card-header"><div class="card-title">Interaction Recommendation Engine</div></div>
-      <div class="insight mb"><div class="insight-label">Marcus Thompson — Next Away Game</div><div class="insight-text">72% probability streaming. <strong>Action:</strong> Watch party invite + digital collectible. Predict $42 spend + loyalty +4 pts.</div></div>
-      <div class="insight mb"><div class="insight-label">Priya Kapoor — At-Risk, Lapsed 3 weeks</div><div class="insight-text">Disengages after losses, upgrades if re-engaged. <strong>Action:</strong> Behind-the-scenes content + priority playoff seats. Churn 74%→28%.</div></div>
-      <div class="insight"><div class="insight-label">840 Casual Fans — Near Upgrade Threshold</div><div class="insight-text">Within 12 loyalty pts of Gold. "You're this close" + premium trial. Est. 23% conversion = $1.8M LTV.</div></div>
+      <div id="predict-recommendations">
+        <div class="insight mb"><div class="insight-label">Marcus Thompson — Next Away Game</div><div class="insight-text">72% probability streaming. <strong>Action:</strong> Watch party invite + digital collectible. Predict $42 spend + loyalty +4 pts.</div></div>
+        <div class="insight mb"><div class="insight-label">Priya Kapoor — At-Risk, Lapsed 3 weeks</div><div class="insight-text">Disengages after losses, upgrades if re-engaged. <strong>Action:</strong> Behind-the-scenes content + priority seats. Churn 74%→28%.</div></div>
+        <div class="insight"><div class="insight-label">840 Casual Fans — Near Upgrade Threshold</div><div class="insight-text">Within 12 loyalty pts of Gold. "You're this close" + premium trial. Est. 23% conversion = $1.8M LTV.</div></div>
+      </div>
     </div>
-    <div class="card"><div class="card-header"><div class="card-title">Churn Probability Distribution</div></div><canvas id="churnDistChart" height="220"></canvas><div style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem">3,847 fans in high-risk zone (&gt;70%). Intervention targeting top 500 highest-LTV at-risk fans.</div></div>
+    <div class="card"><div class="card-header"><div class="card-title">Churn Probability Distribution</div></div><canvas id="churnDistChart" height="220"></canvas><div id="predict-churn-sub" style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem">3,847 fans in high-risk zone (&gt;70%). Intervention targeting top 500 highest-LTV at-risk fans.</div></div>
   </div>
   <div class="card">
-    <div class="card-header"><div class="card-title">PwC Sports Practice Benchmarks <span class="rb">2024 NFL</span></div></div>
+    <div class="card-header"><div class="card-title">PwC Sports Practice Benchmarks <span class="rb" id="predict-benchmark-badge">2024 NFL</span></div></div>
     <canvas id="benchmarkChart" height="120"></canvas>
     <div style="margin-top:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.8rem">
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--gold);margin-right:5px"></span>Your Team</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3B82F6;margin-right:5px"></span>NFL Avg</span>
+      <span id="predict-benchmark-league-label"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3B82F6;margin-right:5px"></span>NFL Avg</span>
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22C55E;margin-right:5px"></span>Top Quartile</span>
     </div>
   </div>

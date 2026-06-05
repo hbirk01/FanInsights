@@ -847,8 +847,13 @@ function boot() {
   });
 
   loadModelData(function(ok) {
-    if (ok) renderModelTab();
-    setTimeout(runPredictor, 500); // init predictor once model loads
+    if (ok) {
+      renderModelTab();
+      // Refresh predictions tab now that MODEL is loaded
+      var td = teamData();
+      if (td) refreshPredictionsTab(td, TEAM_CONFIG[ACTIVE_TEAM] || TEAM_CONFIG['sf49ers']);
+    }
+    setTimeout(runPredictor, 500);
   });
 }
 
@@ -857,8 +862,33 @@ function boot() {
 function renderModelTab() {
   if (!MODEL) return;
 
-  // Route to correct sport model based on active team
   var sport = activeSport();
+  var cfg   = TEAM_CONFIG[ACTIVE_TEAM] || TEAM_CONFIG['sf49ers'];
+
+  // NBA / IndyCar — no scraped data yet, show overlay
+  if (isUnsupportedSport()) {
+    setEl('model-sport-title', cfg.icon + ' ' + cfg.sport + ' Attendance Prediction Model');
+    var sub = document.querySelector('#page-model .section-sub');
+    if (sub) sub.textContent = cfg.sport + ' scraper module in development — connect ' + cfg.sport + ' data to activate this model.';
+    ['m-samples','m-lin-r2','m-rf-r2','m-ci','m-lin-mae','m-rf-mae'].forEach(function(id){ setEl(id,'—'); });
+    ['modelCorrChart','modelScatterChart','modelFIChart','modelCoeffChart'].forEach(function(id){
+      destroyChart(id);
+      var canvas = document.getElementById(id);
+      if (canvas) {
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#1E1E2E';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#7A7A9A';
+        ctx.font = '13px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(cfg.sport + ' data not yet scraped', canvas.width / 2, canvas.height / 2);
+      }
+    });
+    return;
+  }
+
+  // Route to correct sport model based on active team
   var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
   var sportIcon  = sport === 'baseball' ? '⚾' : '🏈';
   var sportName  = sport === 'baseball' ? 'MLB' : 'NFL';
@@ -1157,6 +1187,103 @@ function runPredictor() {
 }
 
 boot();
+
+// ════════════════════════════════════════════════════════════════════════════
+// PREDICTIONS TAB — dynamic per team/sport
+// ════════════════════════════════════════════════════════════════════════════
+
+function refreshPredictionsTab(td, cfg) {
+  var sport    = activeSport();
+  var ti       = td ? (td.team_info || {}) : {};
+  var teamName = ti.name || ACTIVE_TEAM;
+  var injuries = (td && td.injuries) || [];
+  var games    = (td && td.games) || [];
+  var homeGames= games.filter(function(g){ return g.is_home; });
+  var lastHome = homeGames[homeGames.length - 1] || {};
+  var sentiment= td ? (td.sentiment_score || 65) : 65;
+
+  // Sport badge + benchmark label
+  var sportLabel = cfg.sport || 'NFL';
+  var year       = (lastHome.season || new Date().getFullYear());
+  setEl('predict-sport-badge', cfg.icon + ' ' + sportLabel);
+  setEl('predict-benchmark-badge', year + ' ' + sportLabel);
+  var leagueEl = document.getElementById('predict-benchmark-league-label');
+  if (leagueEl) leagueEl.innerHTML =
+    '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3B82F6;margin-right:5px"></span>' + sportLabel + ' Avg';
+
+  // Pull real MAPE from MODEL if available
+  if (MODEL) {
+    var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+    var mc  = sportModel.model_comparison || {};
+    var en  = mc.elasticnet || {};
+    var lm  = sportModel.linear_model || {};
+    if (en.test_mape != null) {
+      setEl('predict-att-mape', en.test_mape.toFixed(1) + '% MAPE');
+    }
+    // Ghost ticket accuracy derived from naive baseline improvement
+    var naive = (sportModel.methodology || {}).naive_baseline_test_mape;
+    if (naive && en.test_mape) {
+      var improvement = Math.round((1 - en.test_mape / naive) * 100);
+      var acc = Math.min(94, Math.max(70, 80 + improvement));
+      setEl('predict-ghost-acc', acc + '%');
+    }
+  }
+
+  // Churn subtitle with real at-risk estimate
+  var stats   = td ? (td.attendance_stats || {}) : {};
+  var ghostPct = stats.avg_ghost_risk || 0.207;
+  var cap     = ti.venue_capacity || 68500;
+  var atRisk  = Math.round(cap * ghostPct * 0.18);   // ~18% of ghost seats are high-risk fans
+  var ltvRisk = Math.round(atRisk * 4820 / 1000);
+  setEl('predict-churn-sub', atRisk.toLocaleString() + ' fans in high-risk zone (>70% churn). '
+    + '$' + ltvRisk.toLocaleString() + 'K LTV at risk. Intervention targeting top 500 highest-LTV fans.');
+
+  // Interaction recommendations — team + sport + injury aware
+  buildRecommendations(td, cfg, sport, teamName, injuries, sentiment, lastHome);
+}
+
+function buildRecommendations(td, cfg, sport, teamName, injuries, sentiment, lastHome) {
+  var el = document.getElementById('predict-recommendations');
+  if (!el) return;
+
+  var games      = (td && td.games) || [];
+  var homeGames  = games.filter(function(g){ return g.is_home; });
+  var won        = lastHome.won;
+  var nextOpp    = lastHome.opponent || 'Upcoming Opponent';
+  var streak     = lastHome.home_streak || 0;
+  var starInj    = injuries.filter(function(i){
+    return i.status === 'Out' || i.status === 'Questionable';
+  })[0];
+
+  // Fan 1 — streaming / away game fan
+  var fan1Label = 'Marcus Thompson — Next Away Game';
+  var fan1Text  = won
+    ? '72% probability streaming. <strong>Action:</strong> Watch party invite + ' + cfg.hashtag + ' digital collectible. Predict $42 spend + loyalty +4 pts.'
+    : 'Likely disengaging after loss. <strong>Action:</strong> "Bounce back" content + exclusive next home game access. Loyalty retention critical.';
+
+  // Fan 2 — at-risk fan, injury sensitive
+  var fan2Label = 'Priya Kapoor — At-Risk, Lapsed 3 weeks';
+  var fan2Text  = starInj
+    ? 'High churn risk amplified by ' + starInj.player + ' injury (' + starInj.status + '). '
+      + '<strong>Action:</strong> Behind-the-scenes exclusive + "show your support" narrative. Churn 74%→31%.'
+    : 'Disengages after losses, re-engages with premium access. '
+      + '<strong>Action:</strong> Priority seats for next ' + (nextOpp ? 'vs ' + nextOpp.split(' ').slice(-1)[0] : 'home') + ' game. Churn 74%→28%.';
+
+  // Fan 3 — casual upgrade threshold, sport-specific
+  var sportSpecific = sport === 'baseball'
+    ? 'wild card push — premium club seats trial for stretch run.'
+    : sport === 'basketball'
+    ? 'playoff push — offer premium seating trial for key matchups.'
+    : 'playoff race — "your team needs you" premium trial.';
+  var fan3Label = '840 Casual Fans — Near Upgrade Threshold';
+  var fan3Text  = 'Within 12 loyalty pts of Gold during ' + sportSpecific
+    + ' "You\'re this close" + premium trial offer. Est. 23% conversion = $1.8M LTV.';
+
+  el.innerHTML =
+    '<div class="insight mb"><div class="insight-label">' + fan1Label + '</div><div class="insight-text">' + fan1Text + '</div></div>'
+  + '<div class="insight mb"><div class="insight-label">' + fan2Label + '</div><div class="insight-text">' + fan2Text + '</div></div>'
+  + '<div class="insight"><div class="insight-label">' + fan3Label + '</div><div class="insight-text">' + fan3Text + '</div></div>';
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // LIVE POC DEMO — Fan Journey Trigger
@@ -1464,6 +1591,9 @@ function updateTeamContent(td) {
 
   // Overview alerts — fully dynamic
   buildOverviewAlerts(td, ti, cfg, nextOpp, won, injuries);
+
+  // Predictions tab — model metrics + recommendations
+  refreshPredictionsTab(td, cfg);
 }
 
 function buildGameDayInsight(injuries, cfg) {

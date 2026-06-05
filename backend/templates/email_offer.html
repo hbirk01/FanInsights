@@ -7,52 +7,43 @@
 <style>
   body { margin:0; padding:0; background:#F4F4F8; font-family:'Segoe UI',Arial,sans-serif; }
   .wrap { max-width:600px; margin:0 auto; }
-  .header { background:#0D0D14; padding:24px 32px; display:flex; align-items:center; justify-content:space-between; }
-  .logo { color:#C9A84C; font-size:22px; font-weight:800; letter-spacing:1px; }
-  .logo-sub { color:#7A7A9A; font-size:10px; letter-spacing:3px; text-transform:uppercase; }
-  .badge-pwc { background:#D93025; color:white; font-size:10px; font-weight:700; padding:3px 8px; border-radius:3px; letter-spacing:1px; }
-  .hero { background:linear-gradient(135deg,#15151F 0%,#1E1E2E 100%); padding:32px; border-bottom:3px solid #C9A84C; }
-  .hero-distance { display:inline-block; background:rgba(201,168,76,0.15); border:1px solid #C9A84C; color:#C9A84C; font-size:12px; font-weight:700; padding:4px 12px; border-radius:20px; margin-bottom:12px; letter-spacing:1px; }
-  .hero-title { color:#E8E8F0; font-size:26px; font-weight:800; line-height:1.2; margin:0 0 8px 0; }
-  .hero-sub { color:#7A7A9A; font-size:14px; margin:0; }
-  .section { background:#ffffff; padding:24px 32px; }
-  .section-dark { background:#15151F; padding:24px 32px; }
-  .game-card { background:#F8F8FC; border:1px solid #E0E0EA; border-radius:12px; padding:20px; margin-bottom:20px; }
-  .game-vs { font-size:18px; font-weight:800; color:#0D0D14; margin-bottom:6px; }
-  .game-meta { font-size:13px; color:#6B7280; }
-  .weather-strip { display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; }
-  .wx-pill { background:#EEF2FF; border:1px solid #C7D2FE; border-radius:8px; padding:6px 12px; font-size:12px; color:#4338CA; font-weight:600; }
+  .header { background:#0D0D14; padding:20px 28px; display:flex; align-items:center; justify-content:space-between; }
+  .logo { color:#C9A84C; font-size:20px; font-weight:800; letter-spacing:1px; }
+  .logo-sub { color:#7A7A9A; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-top:2px; }
+  .hero { background:linear-gradient(135deg,#0D0D14 0%,#1A1A2E 100%); padding:32px 28px; border-bottom:3px solid #C9A84C; }
+  .hero-distance { display:inline-block; background:rgba(201,168,76,0.15); border:1px solid #C9A84C; color:#C9A84C; font-size:11px; font-weight:700; padding:4px 12px; border-radius:20px; margin-bottom:14px; letter-spacing:1px; }
+  .hero-title { color:#E8E8F0; font-size:24px; font-weight:800; line-height:1.3; margin:0 0 10px 0; }
+  .hero-sub { color:#9CA3AF; font-size:13px; margin:0; }
+  .section { background:#ffffff; padding:24px 28px; }
+  .game-card { background:#F8F8FC; border:1px solid #E0E0EA; border-radius:12px; padding:18px; margin-bottom:20px; }
+  .game-vs { font-size:17px; font-weight:800; color:#0D0D14; margin-bottom:5px; }
+  .game-meta { font-size:12px; color:#6B7280; margin-bottom:10px; }
+  .weather-strip { display:flex; gap:8px; flex-wrap:wrap; }
+  .wx-pill { background:#EEF2FF; border:1px solid #C7D2FE; border-radius:6px; padding:5px 10px; font-size:11px; color:#4338CA; font-weight:600; }
   .wx-pill.rain { background:#FEF3C7; border-color:#FCD34D; color:#92400E; }
   .wx-pill.cold { background:#EFF6FF; border-color:#BFDBFE; color:#1E40AF; }
-  .ticket-box { background:linear-gradient(135deg,#0D0D14 0%,#1E1E2E 100%); border:2px solid #C9A84C; border-radius:14px; padding:24px; margin-bottom:20px; }
-  .ticket-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-  .ticket-label { color:#9CA3AF; font-size:12px; text-transform:uppercase; letter-spacing:1px; }
-  .ticket-value { color:#E8E8F0; font-size:15px; font-weight:700; }
-  .ticket-price-row { display:flex; align-items:center; gap:12px; margin-top:16px; padding-top:16px; border-top:1px solid #2A2A3E; }
-  .price-orig { color:#6B7280; font-size:14px; text-decoration:line-through; }
-  .price-new { color:#C9A84C; font-size:28px; font-weight:800; }
-  .price-save { background:#22C55E; color:white; font-size:11px; font-weight:700; padding:4px 10px; border-radius:6px; }
-  .addons { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
-  .addon-pill { background:#F9FAFB; border:1px solid #E5E7EB; border-radius:10px; padding:10px 14px; flex:1; min-width:140px; text-align:center; }
-  .addon-icon { font-size:20px; margin-bottom:4px; }
+  .ticket-box { background:linear-gradient(135deg,#0D0D14 0%,#1E1E2E 100%); border:2px solid #C9A84C; border-radius:14px; padding:22px; margin-bottom:20px; }
+  .ticket-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+  .ticket-label { color:#6B7280; font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+  .ticket-value { color:#E8E8F0; font-size:14px; font-weight:700; }
+  .ticket-price-row { display:flex; align-items:center; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid #2A2A3E; }
+  .price-orig { color:#6B7280; font-size:13px; text-decoration:line-through; }
+  .price-new { color:#C9A84C; font-size:30px; font-weight:800; }
+  .price-save { background:#22C55E; color:white; font-size:11px; font-weight:700; padding:4px 10px; border-radius:6px; white-space:nowrap; }
+  .addons { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px; }
+  .addon-pill { background:#F9FAFB; border:1px solid #E5E7EB; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+  .addon-icon { font-size:18px; flex-shrink:0; }
   .addon-label { font-size:12px; font-weight:700; color:#374151; }
   .addon-price { font-size:11px; color:#6B7280; }
-  .friends-box { background:#F5F3FF; border:1px solid #DDD6FE; border-radius:12px; padding:18px; margin-bottom:20px; }
-  .friends-title { font-size:14px; font-weight:700; color:#5B21B6; margin-bottom:6px; }
-  .friends-sub { font-size:13px; color:#6B7280; line-height:1.5; }
-  .cta-btn { display:block; background:linear-gradient(135deg,#AA8A3C,#C9A84C); color:white; text-align:center; padding:16px; border-radius:10px; font-size:16px; font-weight:800; text-decoration:none; letter-spacing:0.5px; margin-bottom:20px; }
-  .social-tease { background:#EFF6FF; border-left:4px solid #3B82F6; border-radius:0 10px 10px 0; padding:14px 18px; margin-bottom:20px; }
-  .social-tease-title { font-size:13px; font-weight:700; color:#1D4ED8; margin-bottom:4px; }
-  .social-tease-sub { font-size:12px; color:#6B7280; }
-  .metrics-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
-  .metric-card { background:#F8F8FC; border:1px solid #E0E0EA; border-radius:10px; padding:14px; flex:1; min-width:130px; }
-  .metric-label { font-size:10px; color:#9CA3AF; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
-  .metric-value { font-size:20px; font-weight:800; color:#0D0D14; }
-  .metric-sub { font-size:11px; color:#6B7280; }
-  .footer { background:#0D0D14; padding:24px 32px; }
-  .footer-text { color:#4B5563; font-size:11px; line-height:1.7; }
-  .footer-scale { color:#6B7280; font-size:11px; margin-top:12px; padding-top:12px; border-top:1px solid #1E1E2E; }
-  .divider { height:1px; background:#F0F0F5; margin:4px 0; }
+  .cta-btn { display:block; background:linear-gradient(135deg,#AA8A3C,#C9A84C); color:white; text-align:center; padding:16px; border-radius:10px; font-size:15px; font-weight:800; text-decoration:none; letter-spacing:0.3px; margin-bottom:20px; }
+  .friends-box { background:#F5F3FF; border:1px solid #DDD6FE; border-radius:12px; padding:16px 18px; margin-bottom:20px; }
+  .friends-title { font-size:13px; font-weight:700; color:#5B21B6; margin-bottom:5px; }
+  .friends-sub { font-size:12px; color:#6B7280; line-height:1.5; }
+  .social-tease { background:#EFF6FF; border-left:3px solid #3B82F6; padding:12px 16px; border-radius:0 8px 8px 0; margin-bottom:4px; }
+  .social-tease-title { font-size:12px; font-weight:700; color:#1D4ED8; margin-bottom:3px; }
+  .social-tease-sub { font-size:11px; color:#6B7280; }
+  .footer { background:#0D0D14; padding:20px 28px; }
+  .footer-text { color:#6B7280; font-size:11px; line-height:1.7; }
   a { color:#C9A84C; }
 </style>
 </head>
@@ -63,19 +54,19 @@
   <div class="header">
     <div>
       <div class="logo">FanIQ</div>
-      <div class="logo-sub">Fan Intelligence Platform</div>
+      <div class="logo-sub">Fan Intelligence</div>
     </div>
-    <div class="badge-pwc">PwC</div>
+    <div style="background:#D93025;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:1px;">PwC</div>
   </div>
 
   <!-- HERO -->
   <div class="hero">
     <div class="hero-distance">📍 {{distance}} from Levi's Stadium</div>
-    <h1 class="hero-title">{{fan_name}}, tonight's game<br>has seats waiting for you.</h1>
-    <p class="hero-sub">{{seats_remaining}} open seats · {{discount_pct}}% off for loyalty members · Offer expires at kickoff</p>
+    <h1 class="hero-title">{{fan_name}}, tonight's game<br>has seats with your name on them.</h1>
+    <p class="hero-sub">Members-only offer · Expires at kickoff</p>
   </div>
 
-  <!-- GAME CARD -->
+  <!-- GAME + WEATHER -->
   <div class="section">
     <div class="game-card">
       <div class="game-vs">🏈 SF 49ers vs {{opponent}}</div>
@@ -84,7 +75,6 @@
         <div class="wx-pill {{weather_class}}">{{weather_icon}} {{temp_f}}°F</div>
         <div class="wx-pill {{precip_class}}">{{precip_icon}} {{precip_label}}</div>
         <div class="wx-pill">💨 {{wind_mph}} mph</div>
-        <div class="wx-pill" style="background:#F0FDF4;border-color:#86EFAC;color:#166534;">👻 Ghost risk: {{ghost_risk_pct}}%</div>
       </div>
     </div>
 
@@ -93,121 +83,94 @@
       <div class="ticket-row">
         <div>
           <div class="ticket-label">Your Seat</div>
-          <div class="ticket-value">{{section}} · {{row}} · {{seat_count}} tickets</div>
+          <div class="ticket-value">{{section}} · {{row}}</div>
         </div>
         <div style="text-align:right">
-          <div class="ticket-label">Party</div>
-          <div class="ticket-value">{{party_desc}}</div>
+          <div class="ticket-label">Tickets</div>
+          <div class="ticket-value">{{seat_count}} · {{party_desc}}</div>
         </div>
       </div>
-      <div class="ticket-row">
+      <div class="ticket-row" style="margin-bottom:0">
         <div>
           <div class="ticket-label">Zone</div>
           <div class="ticket-value">{{preferred_zone}}</div>
         </div>
         <div style="text-align:right">
-          <div class="ticket-label">Availability</div>
-          <div class="ticket-value" style="color:#22C55E;">✓ Available now</div>
+          <div class="ticket-label">Status</div>
+          <div class="ticket-value" style="color:#22C55E;">✓ Available</div>
         </div>
       </div>
       <div class="ticket-price-row">
         <div class="price-orig">${{orig_price}}/ea</div>
-        <div class="price-new">${{sale_price}}<span style="font-size:14px;color:#9CA3AF;">/ea</span></div>
-        <div class="price-save">Save ${{savings}} total</div>
-      </div>
-    </div>
-
-    <!-- ADD-ONS -->
-    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px;">Add to your experience</div>
-    <div class="addons">
-      <div class="addon-pill">
-        <div class="addon-icon">🅿️</div>
-        <div class="addon-label">Parking P-14</div>
-        <div class="addon-price">$45 · Reserved</div>
-      </div>
-      <div class="addon-pill">
-        <div class="addon-icon">🍺</div>
-        <div class="addon-label">Food Pre-order</div>
-        <div class="addon-price">{{food_order}} · ${{food_total}}</div>
-      </div>
-      <div class="addon-pill">
-        <div class="addon-icon">🚗</div>
-        <div class="addon-label">Uber to Gate C</div>
-        <div class="addon-price">~${{uber_est}} · Deep-link</div>
-      </div>
-      <div class="addon-pill">
-        <div class="addon-icon">👕</div>
-        <div class="addon-label">Jersey at seat</div>
-        <div class="addon-price">Purdy #13 · ${{jersey_price}}</div>
+        <div class="price-new">${{sale_price}}<span style="font-size:13px;color:#9CA3AF;">/ea</span></div>
+        <div class="price-save">Save ${{savings}}</div>
       </div>
     </div>
 
     <!-- CTA -->
     <a href="https://faninsights.co/offer/{{offer_id}}" class="cta-btn">
-      Claim Your Seats — ${{total_cost}} total →
+      Claim {{seat_count}} Seats — ${{total_cost}} total →
     </a>
+
+    <!-- ADD-ONS -->
+    <div style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Make it a full night</div>
+    <div class="addons">
+      <div class="addon-pill">
+        <div class="addon-icon">🅿️</div>
+        <div>
+          <div class="addon-label">Parking P-14</div>
+          <div class="addon-price">$45 · Reserved for you</div>
+        </div>
+      </div>
+      <div class="addon-pill">
+        <div class="addon-icon">🍺</div>
+        <div>
+          <div class="addon-label">Food Pre-order</div>
+          <div class="addon-price">{{food_order}} · ${{food_total}}</div>
+        </div>
+      </div>
+      <div class="addon-pill">
+        <div class="addon-icon">🚗</div>
+        <div>
+          <div class="addon-label">Uber to Gate C</div>
+          <div class="addon-price">~${{uber_est}} · Tap to book</div>
+        </div>
+      </div>
+      <div class="addon-pill">
+        <div class="addon-icon">👕</div>
+        <div>
+          <div class="addon-label">Jersey at your seat</div>
+          <div class="addon-price">Purdy #13 · ${{jersey_price}}</div>
+        </div>
+      </div>
+    </div>
 
     <!-- FRIENDS NEARBY -->
     <div class="friends-box">
-      <div class="friends-title">👥 {{friends_count}} of your friends are {{friends_distance}} without tickets</div>
+      <div class="friends-title">👥 Some of your friends are nearby tonight</div>
       <div class="friends-sub">
-        FanIQ detected {{friend_names}} near the stadium tonight.
-        Send them a share link — they get seats close to yours and you earn 200 FanIQ points per referral.
+        {{friend_names}} are within a few miles of the stadium.
+        Send them a link and get seats together — you'll earn 200 FanIQ points for each friend who joins.
       </div>
       <div style="margin-top:10px;">
-        <a href="https://faninsights.co/share/{{share_id}}" style="font-size:12px;font-weight:700;">📲 Send share link →</a>
+        <a href="https://faninsights.co/share/{{share_id}}" style="font-size:12px;font-weight:700;">Send share link →</a>
       </div>
     </div>
 
     <!-- SOCIAL TEASE -->
     <div class="social-tease">
-      <div class="social-tease-title">📲 Tonight: Post + earn FanIQ points</div>
-      <div class="social-tease-sub">
-        Share your game photo with #GoNiners → earn <strong>500 FanIQ pts ($15 value)</strong>.
-        We'll link your Instagram or X to auto-detect posts from inside the stadium.
-      </div>
+      <div class="social-tease-title">📲 At the game tonight → earn FanIQ points</div>
+      <div class="social-tease-sub">Post your game photo with #GoNiners and earn <strong>500 pts ($15 value)</strong> redeemable on your next visit.</div>
     </div>
 
-    <!-- REAL DATA METRICS -->
-    <div style="font-size:12px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Real data behind this offer</div>
-    <div class="metrics-row">
-      <div class="metric-card">
-        <div class="metric-label">Ghost Risk</div>
-        <div class="metric-value" style="color:#F97316;">{{ghost_risk_pct}}%</div>
-        <div class="metric-sub">Last 3 home games avg</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Seats Open</div>
-        <div class="metric-value" style="color:#EF4444;">{{seats_remaining}}</div>
-        <div class="metric-sub">Pricing model: {{discount_pct}}% off</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Your LTV</div>
-        <div class="metric-value" style="color:#C9A84C;">${{fan_ltv}}</div>
-        <div class="metric-sub">3-year projected value</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Loyalty Score</div>
-        <div class="metric-value" style="color:#22C55E;">{{loyalty_score}}</div>
-        <div class="metric-sub">Top {{loyalty_pct}}% of fans</div>
-      </div>
-    </div>
   </div>
 
   <!-- FOOTER -->
   <div class="footer">
     <div class="footer-text">
-      You're receiving this because FanIQ detected you within {{distance}} of Levi's Stadium
-      and you have season ticket history for this section. This offer is personalized based on
-      your attendance pattern ({{attend_games}} of 17 games last season), party size, and
-      seat preference model.
-    </div>
-    <div class="footer-scale">
-      <strong style="color:#C9A84C;">Built on FanIQ × PwC Analytics</strong><br>
-      This POC demonstrates scalable fan engagement: geo-trigger → personalized offer →
-      food/transport/merch → entry detection → social incentive → lifetime value tracking.<br>
-      <em>At scale: Gmail SMTP → SendGrid (72K fans) · Manual trigger → Mobile SDK geofence ·
-      Mock profile → Salesforce CRM + Ticketmaster API</em>
+      This offer was prepared for {{fan_name}} based on your 49ers history and preferences.
+      To manage your notification preferences or unsubscribe, <a href="#">click here</a>.<br><br>
+      FanIQ · Powered by PwC Analytics
     </div>
   </div>
 

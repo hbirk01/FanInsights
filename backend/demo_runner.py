@@ -163,7 +163,7 @@ def get_live_weather() -> dict:
 def calc_discount(ghost_risk: float) -> tuple[int, int, int]:
     """Return (discount_pct, sale_price, orig_price) based on ghost risk."""
     orig   = FAN_PROFILE["price_point"]
-    disc   = 25 if ghost_risk > 0.35 else (15 if ghost_risk > 0.25 else 8)
+    disc   = 20 if ghost_risk > 0.30 else (15 if ghost_risk > 0.15 else 10)
     sale   = round(orig * (1 - disc / 100))
     return disc, sale, orig
 
@@ -388,15 +388,15 @@ def step3_social() -> dict:
         "tonight_ltv":           tonight_ltv,
         "total_ltv":             f"{fan['ltv']:,}",
         "games_to_platinum":     max(0, 20 - fan["attend_games"]),
-        "total_spend":           tonight_ltv,
-        "season_ltv_m":          season_ltv_m,
+        "ltv_progress_pct":      min(95, int(fan["attend_games"] / 20 * 100)),
+        "tier_label":            fan["tier"],
     }
 
     html = _render("email_social.html", ctx)
     subject = (
-        f"🏆 49ers win! Share your photo → 500 FanIQ pts · Tonight's LTV recap"
+        f"🏆 49ers win! Share your photo → earn 500 FanIQ pts"
         if stats["last_won"] else
-        f"49ers · Share the loyalty · 500 FanIQ pts waiting, {fan['name']}"
+        f"You were there, {fan['name'].split()[0]} 🏈 — share the moment + 500 pts"
     )
     result = send_email(RECIPIENT_EMAIL, subject, html)
 

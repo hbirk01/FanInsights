@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FanIQ — You're In!</title>
+<style>
+  body { margin:0; padding:0; background:#F4F4F8; font-family:'Segoe UI',Arial,sans-serif; }
+  .wrap { max-width:600px; margin:0 auto; }
+  .header { background:#0D0D14; padding:24px 32px; display:flex; align-items:center; justify-content:space-between; }
+  .logo { color:#C9A84C; font-size:22px; font-weight:800; letter-spacing:1px; }
+  .badge-pwc { background:#D93025; color:white; font-size:10px; font-weight:700; padding:3px 8px; border-radius:3px; letter-spacing:1px; }
+  .hero { background:linear-gradient(135deg,#064E3B 0%,#065F46 100%); padding:32px; text-align:center; }
+  .checkin-icon { font-size:52px; margin-bottom:8px; }
+  .hero-title { color:#ECFDF5; font-size:26px; font-weight:800; margin:0 0 8px 0; }
+  .hero-sub { color:#A7F3D0; font-size:14px; margin:0; }
+  .section { background:#ffffff; padding:24px 32px; }
+  .step-row { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid #F0F0F5; }
+  .step-icon { font-size:24px; width:40px; text-align:center; flex-shrink:0; }
+  .step-label { font-size:13px; font-weight:700; color:#374151; }
+  .step-sub { font-size:12px; color:#6B7280; }
+  .step-status { margin-left:auto; font-size:12px; font-weight:700; }
+  .status-live { color:#22C55E; }
+  .status-ready { color:#3B82F6; }
+  .status-pending { color:#9CA3AF; }
+  .upgrade-box { background:linear-gradient(135deg,#0D0D14,#1E1E2E); border:2px solid #C9A84C; border-radius:12px; padding:20px; margin:20px 0; }
+  .upgrade-title { color:#C9A84C; font-size:14px; font-weight:700; margin-bottom:8px; }
+  .upgrade-body { color:#E8E8F0; font-size:13px; line-height:1.6; }
+  .upgrade-price { color:#22C55E; font-size:22px; font-weight:800; margin-top:12px; }
+  .ltv-bar { background:#F3F4F6; border-radius:10px; padding:16px; margin:20px 0; }
+  .ltv-title { font-size:12px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+  .ltv-progress { height:8px; background:#E5E7EB; border-radius:4px; overflow:hidden; margin-bottom:6px; }
+  .ltv-fill { height:100%; background:linear-gradient(90deg,#AA8A3C,#C9A84C); border-radius:4px; }
+  .ltv-label { font-size:12px; color:#6B7280; display:flex; justify-content:space-between; }
+  .footer { background:#0D0D14; padding:24px 32px; }
+  .footer-text { color:#4B5563; font-size:11px; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <div class="logo">FanIQ</div>
+    </div>
+    <div class="badge-pwc">PwC</div>
+  </div>
+
+  <div class="hero">
+    <div class="checkin-icon">✅</div>
+    <h1 class="hero-title">You're in, {{fan_name}}!</h1>
+    <p class="hero-sub">Gate {{gate}} · {{checkin_time}} PT · Levi's Stadium</p>
+  </div>
+
+  <div class="section">
+
+    <div class="step-row">
+      <div class="step-icon">🍺</div>
+      <div>
+        <div class="step-label">Food order being prepared</div>
+        <div class="step-sub">{{food_order}} · Delivered to {{section}} {{row}} in ~{{food_eta}} min</div>
+      </div>
+      <div class="step-status status-live">🟢 Live</div>
+    </div>
+
+    <div class="step-row">
+      <div class="step-icon">🅿️</div>
+      <div>
+        <div class="step-label">Parking P-14 confirmed</div>
+        <div class="step-sub">Exit via Gate C · Lot closes 2hr post-game</div>
+      </div>
+      <div class="step-status status-ready">✓ Set</div>
+    </div>
+
+    <div class="step-row">
+      <div class="step-icon">📲</div>
+      <div>
+        <div class="step-label">Social rewards active</div>
+        <div class="step-sub">Post with #GoNiners → 500 FanIQ pts · Auto-detected from stadium geo</div>
+      </div>
+      <div class="step-status status-ready">Active</div>
+    </div>
+
+    <div class="step-row" style="border-bottom:none">
+      <div class="step-icon">👥</div>
+      <div>
+        <div class="step-label">Friend share links</div>
+        <div class="step-sub">{{friends_joined}} friends joined via your link · {{friend_pts}} FanIQ pts earned</div>
+      </div>
+      <div class="step-status" style="color:#C9A84C;">+{{friend_pts}} pts</div>
+    </div>
+
+    <!-- SEAT UPGRADE -->
+    <div class="upgrade-box">
+      <div class="upgrade-title">⚡ One-time upgrade available</div>
+      <div class="upgrade-body">
+        Move from <strong>{{section}} {{row}}</strong> to <strong>{{upgrade_section}} Row 1</strong> —
+        closer to the field, same sideline. Only 3 seats left at this price.
+      </div>
+      <div class="upgrade-price">+${{upgrade_price}} <span style="font-size:14px;color:#9CA3AF;">for the upgrade</span></div>
+    </div>
+
+    <!-- LTV TRACKER -->
+    <div class="ltv-bar">
+      <div class="ltv-title">Your Loyalty Journey</div>
+      <div class="ltv-progress"><div class="ltv-fill" style="width:{{ltv_progress_pct}}%"></div></div>
+      <div class="ltv-label">
+        <span>{{tier_label}}</span>
+        <span>{{games_to_next}} games to {{next_tier}}</span>
+      </div>
+      <div style="font-size:12px;color:#374151;margin-top:8px;">
+        Your 3-year projected value: <strong>${{fan_ltv}}</strong> ·
+        Tonight adds est. <strong>${{game_ltv_contribution}}</strong> to your lifetime total
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="footer-text">
+      Entry detected via gate scan at {{checkin_time}}. Food ETA is based on current concession
+      load and your seat distance from Gate C kitchen. FanIQ tracks your full game-day journey
+      to personalise every future visit.<br><br>
+      <strong style="color:#C9A84C;">FanIQ × PwC Analytics</strong> — Fan Journey Intelligence Platform
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

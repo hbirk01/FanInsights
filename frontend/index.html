@@ -164,6 +164,58 @@
 <!-- ═══════ OVERVIEW ═══════ -->
 <div id="page-overview" class="page active">
   <div class="sh"><h1>Fan Intelligence Dashboard</h1><p id="overview-sub">Loading…</p></div>
+
+  <!-- ── LIVE POC DEMO PANEL ──────────────────────────────────────────────── -->
+  <div class="card mb" id="poc-panel" style="border:2px solid var(--gold);background:linear-gradient(135deg,rgba(170,138,60,0.08),rgba(170,138,60,0.02))">
+    <div class="card-header">
+      <div>
+        <div class="card-title" style="color:var(--gold)">🚀 Live POC Demo — Fan Journey Trigger</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:2px">Real 49ers data · Live Open-Meteo weather · Actual emails to <span id="poc-recipient" style="color:var(--gold)">configure backend/.env</span></div>
+      </div>
+      <div id="poc-config-status" class="chip">⚙️ Loading config…</div>
+    </div>
+
+    <!-- Step buttons -->
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.2rem">
+      <button class="btn btn-gold" onclick="runDemoStep(1)" id="poc-btn-1" style="padding:8px 18px;font-size:0.85rem">
+        📍 Step 1: Geo Trigger →
+      </button>
+      <button class="btn btn-blue" onclick="runDemoStep(2)" id="poc-btn-2" style="padding:8px 18px;font-size:0.85rem">
+        ✅ Step 2: Check-In →
+      </button>
+      <button class="btn btn-purple" onclick="runDemoStep(3)" id="poc-btn-3" style="padding:8px 18px;font-size:0.85rem">
+        📲 Step 3: Social Push
+      </button>
+    </div>
+
+    <!-- Journey status -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1.2rem">
+      <div id="poc-status-1" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.75rem">
+        <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Step 1 · Geo Trigger</div>
+        <div style="font-size:0.82rem;color:var(--muted)" id="poc-s1-text">⏳ Pending</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px" id="poc-s1-sub"></div>
+      </div>
+      <div id="poc-status-2" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.75rem">
+        <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Step 2 · Stadium Entry</div>
+        <div style="font-size:0.82rem;color:var(--muted)" id="poc-s2-text">⏳ Pending</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px" id="poc-s2-sub"></div>
+      </div>
+      <div id="poc-status-3" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.75rem">
+        <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Step 3 · Social Push</div>
+        <div style="font-size:0.82rem;color:var(--muted)" id="poc-s3-text">⏳ Pending</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px" id="poc-s3-sub"></div>
+      </div>
+    </div>
+
+    <!-- Real data stats -->
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding-top:0.75rem;border-top:1px solid var(--border);font-size:0.78rem">
+      <div><span style="color:var(--muted)">Ghost risk: </span><strong id="poc-ghost" style="color:var(--orange)">—</strong><span style="color:var(--muted);font-size:0.7rem"> (49ers last 3 games)</span></div>
+      <div><span style="color:var(--muted)">Weather: </span><strong id="poc-weather" style="color:var(--blue)">—</strong><span style="color:var(--muted);font-size:0.7rem"> (live Open-Meteo)</span></div>
+      <div><span style="color:var(--muted)">Discount: </span><strong id="poc-discount" style="color:var(--gold)">—</strong></div>
+      <div><span style="color:var(--muted)">Next opponent: </span><strong id="poc-opponent" style="color:var(--text)">—</strong></div>
+    </div>
+  </div>
+
   <div class="g4">
     <div class="stat-card"><div class="stat-label">Total Fan Records</div><div class="stat-value" style="color:var(--gold)">72,441</div><div class="stat-delta">↑ 4,312 from last season</div><div class="stat-sub">Linked across ticketing, app, social</div></div>
     <div class="stat-card"><div class="stat-label">Avg Fan LTV</div><div class="stat-value" style="color:var(--green)">$4,820</div><div class="stat-delta">↑ 12.4% YoY</div><div class="stat-sub">3-year projected value per fan</div></div>

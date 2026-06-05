@@ -801,6 +801,7 @@ function boot() {
   buildEntryFeed();
   buildFriendShareTable();
   buildSocialHub();
+  loadDemoConfig();
 
   var statusEl = document.getElementById('data-status');
   if (statusEl) statusEl.textContent = 'Loading real data…';
@@ -1129,6 +1130,89 @@ function runPredictor() {
 }
 
 boot();
+
+// ════════════════════════════════════════════════════════════════════════════
+// LIVE POC DEMO — Fan Journey Trigger
+// ════════════════════════════════════════════════════════════════════════════
+
+function loadDemoConfig() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_BASE + '/api/demo/config');
+  xhr.onload = function() {
+    if (xhr.status !== 200) return;
+    try {
+      var d = JSON.parse(xhr.responseText);
+      var statusEl = document.getElementById('poc-config-status');
+      var recipEl  = document.getElementById('poc-recipient');
+      if (statusEl) {
+        if (d.email_configured) {
+          statusEl.textContent = '🟢 Email configured';
+          statusEl.style.color = '#22C55E';
+        } else {
+          statusEl.textContent = '🔴 Add credentials to backend/.env';
+          statusEl.style.color = '#EF4444';
+        }
+      }
+      if (recipEl && d.recipient) recipEl.textContent = d.recipient;
+      // Real data stats
+      if (d.real_data) {
+        setEl('poc-ghost',    (d.real_data.ghost_risk_pct || '—') + '%');
+        setEl('poc-opponent', d.real_data.opponent || '—');
+        var disc = d.real_data.ghost_risk_pct > 35 ? '25%' : d.real_data.ghost_risk_pct > 25 ? '15%' : '8%';
+        setEl('poc-discount', disc + ' recommended');
+      }
+      if (d.live_weather && d.live_weather.temp_f) {
+        setEl('poc-weather', d.live_weather.temp_f + '°F · ' + (d.live_weather.precip_label || 'Clear'));
+      }
+    } catch(e) {}
+  };
+  xhr.onerror = function() {
+    var el = document.getElementById('poc-config-status');
+    if (el) { el.textContent = '⚠️ Start backend server first'; el.style.color = '#F97316'; }
+  };
+  xhr.send();
+}
+
+function runDemoStep(step) {
+  var endpoints = { 1: '/api/demo/run', 2: '/api/demo/checkin', 3: '/api/demo/social' };
+  var btnIds    = { 1: 'poc-btn-1', 2: 'poc-btn-2', 3: 'poc-btn-3' };
+  var statusMap = { 1: 'poc-s1-text', 2: 'poc-s2-text', 3: 'poc-s3-text' };
+  var subMap    = { 1: 'poc-s1-sub',  2: 'poc-s2-sub',  3: 'poc-s3-sub' };
+  var names     = { 1: 'Geo Trigger', 2: 'Stadium Entry', 3: 'Social Push' };
+
+  var btn = document.getElementById(btnIds[step]);
+  if (btn) { btn.textContent = '⏳ Sending…'; btn.disabled = true; }
+  setEl(statusMap[step], '⏳ Sending email…');
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', API_BASE + endpoints[step]);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onload = function() {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ ' + names[step] + ' sent'; }
+    try {
+      var result = JSON.parse(xhr.responseText);
+      var now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      if (result.email_sent) {
+        setEl(statusMap[step], '✅ Email sent · ' + now);
+        setEl(subMap[step],    'To: ' + (result.recipient || '—'));
+        document.getElementById('poc-status-' + step).style.borderColor = '#22C55E';
+      } else {
+        var err = result.email_error || 'Unknown error';
+        setEl(statusMap[step], '❌ Not sent: ' + err.slice(0, 60));
+        setEl(subMap[step],    'Check backend/.env credentials');
+        document.getElementById('poc-status-' + step).style.borderColor = '#EF4444';
+      }
+    } catch(e) {
+      setEl(statusMap[step], '❌ Parse error');
+    }
+  };
+  xhr.onerror = function() {
+    if (btn) { btn.disabled = false; }
+    setEl(statusMap[step], '❌ Server unreachable — start backend first');
+    document.getElementById('poc-status-' + step).style.borderColor = '#F97316';
+  };
+  xhr.send('{}');
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // FEATURE 2 — Seat Intelligence & Price Point Profile

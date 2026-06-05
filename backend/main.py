@@ -268,6 +268,77 @@ def get_job(job_id: str):
     return {"job_id": job_id, "status": _jobs[job_id]}
 
 
+# ── DEMO / POC endpoints ──────────────────────────────────────────────────────
+
+@app.get("/api/demo/config", summary="Demo configuration status")
+def demo_config():
+    """Return whether email is configured + what real data stats are available."""
+    from notifier import is_configured, redact_email, RECIPIENT_EMAIL, DEMO_FAN, DEMO_TEAM
+    from demo_runner import get_real_game_stats, get_live_weather
+
+    configured = is_configured()
+    stats = {}
+    wx    = {}
+    try:
+        stats = get_real_game_stats(DEMO_TEAM)
+    except Exception:
+        pass
+    try:
+        wx = get_live_weather()
+    except Exception:
+        pass
+
+    return {
+        "email_configured": configured,
+        "recipient": redact_email(RECIPIENT_EMAIL) if configured else "not set — add to backend/.env",
+        "demo_fan":  DEMO_FAN,
+        "demo_team": DEMO_TEAM,
+        "real_data": {
+            "ghost_risk_pct":    stats.get("ghost_risk_pct"),
+            "seats_remaining":   stats.get("seats_remaining"),
+            "opponent":          stats.get("opponent"),
+            "last_result":       "Win" if stats.get("last_won") else "Loss",
+        },
+        "live_weather": {
+            "temp_f":       wx.get("temp_f"),
+            "precip_label": wx.get("precip_label"),
+            "wind_mph":     wx.get("wind_mph"),
+            "source":       "Open-Meteo live forecast API",
+        },
+    }
+
+
+@app.post("/api/demo/run", summary="Step 1 — Geo trigger offer email")
+def demo_run():
+    """
+    Fires Step 1 of the fan journey: geo-proximity detected → personalised
+    ticket offer email sent to RECIPIENT_EMAIL.
+    Uses real 49ers ghost risk + live Open-Meteo weather data.
+    """
+    from demo_runner import step1_geo_trigger
+    return step1_geo_trigger()
+
+
+@app.post("/api/demo/checkin", summary="Step 2 — Stadium entry email")
+def demo_checkin():
+    """
+    Fires Step 2: fan scans into stadium → food-delivery confirmation,
+    seat upgrade offer, loyalty progress update.
+    """
+    from demo_runner import step2_checkin
+    return step2_checkin()
+
+
+@app.post("/api/demo/social", summary="Step 3 — Post-game social push email")
+def demo_social():
+    """
+    Fires Step 3: post-game social incentive + full LTV recap.
+    Uses real last-game result (win/loss, score) from scraped data.
+    """
+    from demo_runner import step3_social
+    return step3_social()
+
+
 # ── serve frontend ────────────────────────────────────────────────────────────
 
 if FRONTEND_DIR.exists():

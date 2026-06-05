@@ -17,6 +17,10 @@ backend/data/model_results.json
 .DS_Store
 Thumbs.db
 
+# Credentials (never commit)
+backend/.env
+.env
+
 # IDE
 .vscode/
 .idea/

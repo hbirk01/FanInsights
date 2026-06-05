@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FanIQ — Share the Moment</title>
+<style>
+  body { margin:0; padding:0; background:#F4F4F8; font-family:'Segoe UI',Arial,sans-serif; }
+  .wrap { max-width:600px; margin:0 auto; }
+  .header { background:#0D0D14; padding:24px 32px; display:flex; align-items:center; justify-content:space-between; }
+  .logo { color:#C9A84C; font-size:22px; font-weight:800; letter-spacing:1px; }
+  .badge-pwc { background:#D93025; color:white; font-size:10px; font-weight:700; padding:3px 8px; border-radius:3px; letter-spacing:1px; }
+  .hero-win { background:linear-gradient(135deg,#7C3AED,#6D28D9); padding:32px; text-align:center; }
+  .hero-loss { background:linear-gradient(135deg,#1E40AF,#1D4ED8); padding:32px; text-align:center; }
+  .result-badge { display:inline-block; font-size:36px; background:rgba(255,255,255,0.15); border-radius:50%; width:64px; height:64px; line-height:64px; margin-bottom:12px; }
+  .hero-title { color:#FFFFFF; font-size:26px; font-weight:800; margin:0 0 8px 0; }
+  .hero-score { color:rgba(255,255,255,0.8); font-size:20px; font-weight:700; margin:0 0 8px 0; }
+  .hero-sub { color:rgba(255,255,255,0.65); font-size:13px; margin:0; }
+  .section { background:#ffffff; padding:24px 32px; }
+  .pts-box { background:linear-gradient(135deg,#0D0D14,#1E1E2E); border:2px solid #C9A84C; border-radius:14px; padding:24px; text-align:center; margin-bottom:20px; }
+  .pts-number { color:#C9A84C; font-size:48px; font-weight:800; line-height:1; }
+  .pts-label { color:#9CA3AF; font-size:12px; text-transform:uppercase; letter-spacing:2px; margin-bottom:4px; }
+  .pts-value { color:#E8E8F0; font-size:15px; font-weight:600; }
+  .platform-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+  .platform-pill { flex:1; min-width:120px; border:1px solid #E5E7EB; border-radius:10px; padding:12px; text-align:center; cursor:pointer; }
+  .platform-icon { font-size:22px; margin-bottom:4px; }
+  .platform-name { font-size:12px; font-weight:700; color:#374151; }
+  .caption-box { background:#F8F8FC; border:1px solid #E0E0EA; border-radius:10px; padding:16px; margin-bottom:20px; }
+  .caption-label { font-size:11px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+  .caption-text { font-size:14px; color:#374151; line-height:1.6; font-style:italic; }
+  .referral-box { background:#F5F3FF; border:1px solid #DDD6FE; border-radius:12px; padding:18px; margin-bottom:20px; }
+  .referral-title { font-size:14px; font-weight:700; color:#5B21B6; margin-bottom:8px; }
+  .referral-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .referral-fan { font-size:13px; color:#374151; }
+  .referral-status { font-size:12px; font-weight:600; }
+  .ltv-recap { background:#F0FDF4; border:1px solid #86EFAC; border-radius:12px; padding:18px; margin-bottom:20px; }
+  .ltv-title { font-size:14px; font-weight:700; color:#166534; margin-bottom:12px; }
+  .ltv-row { display:flex; justify-content:space-between; font-size:13px; color:#374151; margin-bottom:6px; }
+  .ltv-total { font-size:15px; font-weight:800; color:#15803D; border-top:1px solid #86EFAC; padding-top:10px; margin-top:10px; display:flex; justify-content:space-between; }
+  .cta-btn { display:block; background:linear-gradient(135deg,#7C3AED,#6D28D9); color:white; text-align:center; padding:16px; border-radius:10px; font-size:16px; font-weight:800; text-decoration:none; margin-bottom:20px; }
+  .footer { background:#0D0D14; padding:24px 32px; }
+  .footer-text { color:#4B5563; font-size:11px; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div><div class="logo">FanIQ</div></div>
+    <div class="badge-pwc">PwC</div>
+  </div>
+
+  <div class="hero-{{result_class}}">
+    <div class="result-badge">{{result_emoji}}</div>
+    <h1 class="hero-title">{{result_headline}}</h1>
+    <div class="hero-score">{{our_score}} – {{opp_score}} vs {{opponent}}</div>
+    <p class="hero-sub">{{fan_name}} · {{section}} · {{game_date}}</p>
+  </div>
+
+  <div class="section">
+
+    <!-- POINTS OFFER -->
+    <div class="pts-box">
+      <div class="pts-label">Share your moment · Earn</div>
+      <div class="pts-number">500</div>
+      <div class="pts-value">FanIQ points = $15 toward your next game</div>
+    </div>
+
+    <div style="font-size:14px;font-weight:700;color:#374151;margin-bottom:12px;">Share on your platform</div>
+    <div class="platform-row">
+      <div class="platform-pill">
+        <div class="platform-icon">📸</div>
+        <div class="platform-name">Instagram</div>
+      </div>
+      <div class="platform-pill">
+        <div class="platform-icon">✖</div>
+        <div class="platform-name">X / Twitter</div>
+      </div>
+      <div class="platform-pill">
+        <div class="platform-icon">🎵</div>
+        <div class="platform-name">TikTok</div>
+      </div>
+      <div class="platform-pill">
+        <div class="platform-icon">📘</div>
+        <div class="platform-name">Facebook</div>
+      </div>
+    </div>
+
+    <!-- SUGGESTED CAPTION -->
+    <div class="caption-box">
+      <div class="caption-label">💬 Suggested caption</div>
+      <div class="caption-text">
+        "{{suggested_caption}}"
+        <br><br>
+        <strong>#GoNiners #FanIQ #{{opponent_hashtag}}</strong>
+      </div>
+    </div>
+
+    <!-- FRIEND REFERRAL -->
+    <div class="referral-box">
+      <div class="referral-title">👥 Send your friends next game at 12% off</div>
+      {{friend_rows}}
+    </div>
+
+    <!-- LTV RECAP -->
+    <div class="ltv-recap">
+      <div class="ltv-title">📊 Tonight's contribution to your Lifetime Value</div>
+      <div class="ltv-row"><span>Tickets</span><span style="font-weight:600;">${{ticket_contribution}}</span></div>
+      <div class="ltv-row"><span>Food &amp; beverage</span><span style="font-weight:600;">${{food_contribution}}</span></div>
+      <div class="ltv-row"><span>Parking &amp; transport</span><span style="font-weight:600;">${{transport_contribution}}</span></div>
+      <div class="ltv-row"><span>Merch</span><span style="font-weight:600;">${{merch_contribution}}</span></div>
+      <div class="ltv-row"><span>Referral value ({{referrals}} new fans)</span><span style="font-weight:600;color:#22C55E;">${{referral_contribution}}</span></div>
+      <div class="ltv-total"><span>Tonight's total LTV</span><span>${{tonight_ltv}}</span></div>
+      <div style="font-size:12px;color:#6B7280;margin-top:8px;">
+        Running 3-year LTV: <strong style="color:#15803D;">${{total_ltv}}</strong> ·
+        {{games_to_platinum}} more games to <strong>Platinum tier</strong>
+      </div>
+    </div>
+
+    <a href="https://faninsights.co/share/{{share_id}}" class="cta-btn">
+      Share now → Claim 500 pts
+    </a>
+
+  </div>
+
+  <div class="footer">
+    <div class="footer-text">
+      FanIQ tracked {{fan_name}}'s full journey tonight — geo-detect (3.2mi) → ticket offer →
+      pre-order → entry at Gate C → social incentive. Total game-day spend tracked: ${{total_spend}}.
+      <br><br>
+      <strong style="color:#C9A84C;">FanIQ × PwC Analytics</strong> —
+      This is what a fully instrumented fan relationship looks like.
+      Every touchpoint feeds the lifetime value model. At 72,000 fans × 9 home games,
+      this is a ${{season_ltv_m}}M LTV opportunity per season.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -227,27 +227,41 @@ function refreshRealDataPanels() {
 
   // ── news feed ─────────────────────────────────────────────────────────────
   var newsEl = document.getElementById('real-news-feed');
-  if (newsEl && td.news && td.news.length) {
-    newsEl.innerHTML = td.news.slice(0,6).map(function(a) {
-      return '<div class="news-item">' +
-        '<div class="news-date">' + a.date + '</div>' +
-        '<div class="news-headline">' + a.headline + '</div>' +
-        (a.description ? '<div class="news-desc">' + a.description.slice(0,120) + '…</div>' : '') +
-      '</div>';
-    }).join('');
+  if (newsEl) {
+    var newsItems = td.news || td.team_news || [];
+    if (newsItems.length) {
+      newsEl.innerHTML = newsItems.slice(0,6).map(function(a) {
+        return '<div class="ni">' +
+          '<div class="ni-date">' + (a.date || '') + '</div>' +
+          '<div class="ni-hl">' + (a.headline || a.title || '') + '</div>' +
+          ((a.description || a.summary) ? '<div class="ni-desc">' + (a.description || a.summary || '').slice(0,140) + '…</div>' : '') +
+        '</div>';
+      }).join('');
+    } else {
+      var teamLabel = (td.team_info && td.team_info.name) || ACTIVE_TEAM;
+      newsEl.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0;">No recent news scraped for ' + teamLabel + '. Run the scraper to pull ESPN headlines.</div>';
+    }
   }
 
   // ── injury list ────────────────────────────────────────────────────────────
   var injEl = document.getElementById('real-injuries');
-  if (injEl && td.injuries && td.injuries.length) {
-    injEl.innerHTML = td.injuries.slice(0,8).map(function(inj) {
-      var color = inj.status === 'Out' ? RED : inj.status === 'Injured Reserve' ? '#7F1D1D' : ORANGE;
-      return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid var(--border)">' +
-        '<span style="font-weight:600;font-size:0.85rem;flex:1">' + inj.player + '</span>' +
-        '<span style="font-size:0.72rem;color:var(--muted)">' + inj.position + '</span>' +
-        '<span style="font-size:0.72rem;font-weight:600;color:' + color + ';min-width:80px;text-align:right">' + inj.status + '</span>' +
-      '</div>';
-    }).join('');
+  if (injEl) {
+    var injuries = td.injuries || td.injury_report || [];
+    if (injuries.length) {
+      injEl.innerHTML = injuries.slice(0,10).map(function(inj) {
+        var status = inj.status || inj.injury_status || 'Questionable';
+        var color = status === 'Out' ? RED : (status === 'Injured Reserve' || status === 'IR') ? '#7F2D2D' : ORANGE;
+        return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0;border-bottom:1px solid var(--border)">' +
+          '<span style="font-weight:600;font-size:0.84rem;flex:1;color:var(--text)">' + (inj.player || inj.name || '—') + '</span>' +
+          '<span style="font-size:0.71rem;color:var(--muted);min-width:30px">' + (inj.position || '') + '</span>' +
+          '<span style="font-size:0.71rem;color:var(--muted-hi);min-width:80px">' + (inj.injury || '') + '</span>' +
+          '<span style="font-size:0.71rem;font-weight:700;color:' + color + ';min-width:90px;text-align:right">' + status + '</span>' +
+        '</div>';
+      }).join('');
+    } else {
+      var teamLbl = (td.team_info && td.team_info.name) || ACTIVE_TEAM;
+      injEl.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0;">No injury report available for ' + teamLbl + '.</div>';
+    }
   }
 
   // ── weather forecast ──────────────────────────────────────────────────────
@@ -455,7 +469,7 @@ function initCharts() {
     data: {
       labels: ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'],
       datasets: [
-        { label:'Your Team', data:[68,69,71,70,72,71,73,74,73,75,74,73].map(function(v,i){ return i >= 9 ? Math.round(v + sentOffset) : v; }), borderColor:GOLD, backgroundColor:'rgba(170,138,60,0.1)', tension:0.4, fill:true, pointRadius:3 },
+        { label:'Your Team', data:[68,69,71,70,72,71,73,74,73,75,74,73].map(function(v,i){ return i >= 9 ? Math.round(v + sentOffset) : v; }), borderColor:GOLD, backgroundColor:'rgba(34,211,238,0.1)', tension:0.4, fill:true, pointRadius:3 },
         { label:'NFL Avg',   data:[59,59,61,60,62,61,62,63,62,63,62,61], borderColor:BLUE, borderDash:[4,4], tension:0.4, pointRadius:0 }
       ]
     },
@@ -471,9 +485,9 @@ function initCharts() {
     var attVals = homeGames.map(function(g){ return g.attendance; });
     var capLine = homeGames.map(function(g){ return g.capacity; });
     var colors  = homeGames.map(function(g){
-      if (!g.won) return 'rgba(239,68,68,0.75)';
-      if (g.weather && g.weather.is_rain) return 'rgba(59,130,246,0.75)';
-      return 'rgba(170,138,60,0.8)';
+      if (!g.won) return 'rgba(240,85,85,0.75)';
+      if (g.weather && g.weather.is_rain) return 'rgba(167,139,250,0.75)';
+      return 'rgba(34,211,238,0.8)';
     });
 
     mk('attendanceChart', {
@@ -744,7 +758,7 @@ function initCharts() {
     data: {
       labels: ['Fan Loyalty','Ghost Ticket (inv.)','Avg LTV ($K)','AI Conversion','App Engage %','Holder Retention'],
       datasets: [
-        { label:'Your Team',    data:[73,78,4.8,38,64,91], backgroundColor:'rgba(170,138,60,0.85)' },
+        { label:'Your Team',    data:[73,78,4.8,38,64,91], backgroundColor:'rgba(34,211,238,0.85)' },
         { label:'NFL Avg',      data:[61,68,2.9,24,48,84], backgroundColor:'rgba(59,130,246,0.65)' },
         { label:'Top Quartile', data:[82,86,7.2,52,78,96], backgroundColor:'rgba(34,197,94,0.65)' },
       ]
@@ -1014,7 +1028,7 @@ function renderModelTab() {
 
   var corrLabels = teamCorrPairs.length ? teamCorrPairs.map(function(p){ return p.label; }) : Object.keys(sportModel.correlations||{}).slice(0,8).map(function(k){ return flabels[k]||k; });
   var corrVals   = teamCorrPairs.length ? teamCorrPairs.map(function(p){ return p.r; })     : Object.values(sportModel.correlations||{}).slice(0,8);
-  var corrColors = corrVals.map(function(v){ return v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)'; });
+  var corrColors = corrVals.map(function(v){ return v >= 0 ? 'rgba(16,217,160,0.8)' : 'rgba(240,85,85,0.8)'; });
 
   destroyChart('modelCorrChart');
   chartInstances['modelCorrChart'] = new Chart(document.getElementById('modelCorrChart'), {
@@ -1141,7 +1155,7 @@ function renderModelTab() {
       plugins:{ legend:{ display:false },
         tooltip:{ callbacks:{ label:function(ctx){
           var v = ctx.parsed.x;
-          return (v>0?'+':'')+Math.round(v).toLocaleString()+' fans per unit (' + teamName + ')';
+          return (v>0?'↑ +':' ↓ ')+Math.round(Math.abs(v)).toLocaleString()+' fans per unit increase (' + teamName + ')';
         }}}
       },
       responsive: true, maintainAspectRatio: false,

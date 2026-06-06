@@ -424,9 +424,9 @@
     <div class="card-header">
       <div class="card-title">Game-by-Game Attendance + Weather Impact <span class="rb">ESPN + Open-Meteo</span></div>
       <div style="font-size:0.74rem;color:var(--muted)">
-        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(170,138,60,0.8);margin-right:4px"></span>Win &nbsp;
-        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(239,68,68,0.75);margin-right:4px"></span>Loss &nbsp;
-        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(59,130,246,0.75);margin-right:4px"></span>Rain game
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(34,211,238,0.8);margin-right:4px"></span>Win &nbsp;
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(240,85,85,0.75);margin-right:4px"></span>Loss &nbsp;
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(167,139,250,0.75);margin-right:4px"></span>Rain game
       </div>
     </div>
     <canvas id="attendanceChart" height="150"></canvas>
@@ -814,7 +814,7 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">Actual vs Predicted Attendance <span class="rb">Linear Model</span></div>
-        <span style="font-size:0.74rem;color:var(--muted)"><span style="color:var(--gold)">●</span> Win &nbsp;<span style="color:var(--red)">●</span> Loss</span>
+        <span style="font-size:0.74rem;color:var(--muted)"><span style="color:var(--cyan)">●</span> Win &nbsp;<span style="color:var(--red)">●</span> Loss</span>
       </div>
       <div style="position:relative;height:320px;"><canvas id="modelScatterChart"></canvas></div>
     </div>
@@ -831,8 +831,8 @@
     </div>
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Linear Coefficients — Fans per Unit <span class="rb">Unstandardized</span></div>
-        <span style="font-size:0.74rem;color:var(--muted)">How much attendance shifts per 1-unit change</span>
+        <div class="card-title">Attendance Change per 1-Unit Increase in Feature <span class="rb">OLS estimate</span></div>
+        <span style="font-size:0.74rem;color:var(--muted)">Positive = boosts attendance · Negative = reduces attendance</span>
       </div>
       <div style="position:relative;height:300px;"><canvas id="modelCoeffChart"></canvas></div>
     </div>

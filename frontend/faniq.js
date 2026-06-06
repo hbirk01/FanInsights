@@ -668,9 +668,16 @@ function initCharts() {
   var fiLabels = fiRealPairs.length ? fiRealPairs.map(function(p){ return p.label; }) : ['Attendance Freq','Purchase History','App Engagement','Social Activity','Location Signals','Ticket Resale','Team Performance'];
   var fiValsP  = fiRealPairs.length ? fiRealPairs.map(function(p){ return +(p.val*100).toFixed(1); }) : [31,24,18,12,8,5,2];
 
+  // Colour each bar on a cyan→green gradient ranked by value so the chart is readable at a glance
+  var fiBarColors = fiValsP.map(function(v, i, arr) {
+    var rank = arr.length > 1 ? i / (arr.length - 1) : 0; // 0 = strongest (top), 1 = weakest
+    // Interpolate: strong → cyan (#22D3EE), weak → muted blue (#3B82F6 faded)
+    var stops = ['#22D3EE','#38BDF8','#60A5FA','#818CF8','#A78BFA'];
+    return stops[Math.min(Math.floor(rank * stops.length), stops.length - 1)];
+  });
   mk('featureImportanceChart', {
     type: 'bar',
-    data: { labels: fiLabels, datasets: [{ data: fiValsP, backgroundColor: GOLD }] },
+    data: { labels: fiLabels, datasets: [{ data: fiValsP, backgroundColor: fiBarColors }] },
     options: {
       indexAxis:'y',
       plugins:{ legend:{ display:false },
@@ -1080,7 +1087,11 @@ function renderModelTab() {
   chartInstances['modelFIChart'] = new Chart(document.getElementById('modelFIChart'), {
     type: 'bar',
     data: { labels: fiPairs.map(function(p){ return p.label; }),
-            datasets: [{ data: fiPairs.map(function(p){ return Math.abs(p.r); }), backgroundColor: GOLD, borderWidth: 0 }] },
+            datasets: [{ data: fiPairs.map(function(p){ return Math.abs(p.r); }),
+              backgroundColor: fiPairs.map(function(p, i, arr) {
+                var stops = ['#22D3EE','#38BDF8','#60A5FA','#818CF8','#A78BFA'];
+                return stops[Math.min(Math.floor((arr.length > 1 ? i/(arr.length-1) : 0) * stops.length), stops.length-1)];
+              }), borderWidth: 0 }] },
     options: {
       indexAxis:'y',
       plugins:{ legend:{ display:false },
@@ -1121,7 +1132,7 @@ function renderModelTab() {
   chartInstances['modelCoeffChart'] = new Chart(document.getElementById('modelCoeffChart'), {
     type: 'bar',
     data: { labels: olsPairs.map(function(p){ return p.label; }),
-            datasets: [{ data: cVals2, backgroundColor: cVals2.map(function(v){ return v>=0?'rgba(34,197,94,0.75)':'rgba(239,68,68,0.75)'; }), borderWidth:0 }] },
+            datasets: [{ data: cVals2, backgroundColor: cVals2.map(function(v){ return v>=0?'rgba(16,217,160,0.75)':'rgba(240,85,85,0.75)'; }), borderWidth:0 }] },
     options: {
       indexAxis:'y',
       plugins:{ legend:{ display:false },

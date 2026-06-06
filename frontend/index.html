@@ -809,14 +809,14 @@
         <div class="card-title">Feature Correlations with Attendance <span class="rb">Pearson r</span></div>
         <span style="font-size:0.74rem;color:var(--muted)">Team-mean adjusted · sorted by strength</span>
       </div>
-      <canvas id="modelCorrChart" height="260"></canvas>
+      <div style="position:relative;height:320px;"><canvas id="modelCorrChart"></canvas></div>
     </div>
     <div class="card">
       <div class="card-header">
         <div class="card-title">Actual vs Predicted Attendance <span class="rb">Linear Model</span></div>
         <span style="font-size:0.74rem;color:var(--muted)"><span style="color:var(--gold)">●</span> Win &nbsp;<span style="color:var(--red)">●</span> Loss</span>
       </div>
-      <canvas id="modelScatterChart" height="260"></canvas>
+      <div style="position:relative;height:320px;"><canvas id="modelScatterChart"></canvas></div>
     </div>
   </div>
 
@@ -827,14 +827,14 @@
         <div class="card-title">RF Feature Importance <span class="rb">Full Dataset</span></div>
         <span style="font-size:0.74rem;color:var(--muted)">Share of variance explained by each signal</span>
       </div>
-      <canvas id="modelFIChart" height="240"></canvas>
+      <div style="position:relative;height:300px;"><canvas id="modelFIChart"></canvas></div>
     </div>
     <div class="card">
       <div class="card-header">
         <div class="card-title">Linear Coefficients — Fans per Unit <span class="rb">Unstandardized</span></div>
         <span style="font-size:0.74rem;color:var(--muted)">How much attendance shifts per 1-unit change</span>
       </div>
-      <canvas id="modelCoeffChart" height="240"></canvas>
+      <div style="position:relative;height:300px;"><canvas id="modelCoeffChart"></canvas></div>
     </div>
   </div>
 

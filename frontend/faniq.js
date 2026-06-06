@@ -1021,6 +1021,7 @@ function renderModelTab() {
     type: 'bar',
     data: { labels: corrLabels, datasets: [{ data: corrVals, backgroundColor: corrColors, borderWidth: 0 }] },
     options: {
+      responsive: true, maintainAspectRatio: false,
       indexAxis: 'y',
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: function(ctx) { return 'r = ' + ctx.parsed.x.toFixed(3) + ' (' + teamName + ')'; } } } },
@@ -1047,7 +1048,7 @@ function renderModelTab() {
       datasets: [{
         label: teamName + ' games',
         data: scatterData,
-        backgroundColor: scatterData.map(function(d){ return d.won ? 'rgba(170,138,60,0.8)' : 'rgba(239,68,68,0.65)'; }),
+        backgroundColor: scatterData.map(function(d){ return d.won ? 'rgba(34,211,238,0.75)' : 'rgba(240,85,85,0.65)'; }),
         pointRadius: 5,
       }, {
         label: 'Perfect prediction',
@@ -1056,6 +1057,7 @@ function renderModelTab() {
       }]
     },
     options: {
+      responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: {
@@ -1093,6 +1095,7 @@ function renderModelTab() {
                 return stops[Math.min(Math.floor((arr.length > 1 ? i/(arr.length-1) : 0) * stops.length), stops.length-1)];
               }), borderWidth: 0 }] },
     options: {
+      responsive: true, maintainAspectRatio: false,
       indexAxis:'y',
       plugins:{ legend:{ display:false },
         tooltip:{ callbacks:{ label:function(ctx){ return '|r| = ' + ctx.parsed.x.toFixed(3) + ' (' + teamName + ')'; } } } },
@@ -1141,6 +1144,7 @@ function renderModelTab() {
           return (v>0?'+':'')+Math.round(v).toLocaleString()+' fans per unit (' + teamName + ')';
         }}}
       },
+      responsive: true, maintainAspectRatio: false,
       scales:{
         x:{ ticks:{ color:MUTED, font:{size:10}, callback:function(v){return (v>0?'+':'')+Math.round(v);} }, grid:{ color:GRID } },
         y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } }

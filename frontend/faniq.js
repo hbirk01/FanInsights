@@ -1521,7 +1521,7 @@ function selectDemoFan(fanKey, btn) {
   // Update button styles
   document.querySelectorAll('.poc-fan-btn').forEach(function(b) {
     b.style.background = 'transparent';
-    b.style.color = 'var(--muted)';
+    b.style.color = 'var(--muted-hi)';
     b.style.borderColor = 'var(--border)';
   });
   var cfg = DEMO_FAN_ACTIONS[fanKey] || DEMO_FAN_ACTIONS.marcus;
@@ -1530,8 +1530,11 @@ function selectDemoFan(fanKey, btn) {
   btn.style.borderColor = cfg.color;
   // Update description
   var desc = document.getElementById('poc-action-desc');
-  if (desc) desc.innerHTML = '<strong style="color:' + cfg.color + '">' + cfg.label + '</strong> — ' + cfg.desc;
-  desc.style.borderLeftColor = cfg.color;
+  if (desc) {
+    desc.innerHTML = '<strong style="color:' + cfg.color + '">' + cfg.label + '</strong> — ' + cfg.desc;
+    desc.style.borderColor = 'rgba(' + hexToRgb(cfg.color) + ',0.3)';
+    desc.style.background = 'rgba(' + hexToRgb(cfg.color) + ',0.08)';
+  }
   // Reset step statuses
   [1,2,3].forEach(function(s){
     setEl('poc-s' + s + '-text', '⏳ Pending');

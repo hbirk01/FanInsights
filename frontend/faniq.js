@@ -60,8 +60,8 @@ function isUnsupportedSport() {
 var chartsInit = false;
 var chartInstances = {};
 
-var GOLD = '#AA8A3C', GOLD2 = '#C9A84C', BLUE = '#3B82F6', GREEN = '#22C55E',
-    RED = '#EF4444', PURPLE = '#8B5CF6', ORANGE = '#F97316', MUTED = '#9CA3AF', GRID = '#1E1E2E';
+var GOLD = '#F5A524', GOLD2 = '#FBBF24', BLUE = '#22D3EE', GREEN = '#10D9A0',
+    RED = '#F05555', PURPLE = '#A78BFA', ORANGE = '#FB923C', MUTED = '#4D6E96', GRID = '#1C2E4A';
 
 // ── mock fallback data ────────────────────────────────────────────────────────
 var fans = [
@@ -753,7 +753,7 @@ function initCharts() {
     type: 'doughnut',
     data: {
       labels: ['Positive signals', 'Neutral/Negative'],
-      datasets: [{ data:[sentScore, 100-sentScore], backgroundColor:[sentScore>60?GREEN:sentScore>40?ORANGE:RED, '#1E1E2E'], borderWidth:0 }]
+      datasets: [{ data:[sentScore, 100-sentScore], backgroundColor:[sentScore>60?GREEN:sentScore>40?ORANGE:RED, '#0F1C35'], borderWidth:0 }]
     },
     options: {
       circumference: 180, rotation:-90,
@@ -911,10 +911,10 @@ function renderModelTab() {
       if (canvas) {
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#1E1E2E';
+        ctx.fillStyle = '#0A1324';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#7A7A9A';
-        ctx.font = '13px Segoe UI, sans-serif';
+        ctx.fillStyle = '#4D6E96';
+        ctx.font = '13px DM Sans, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(cfg.sport + ' data not yet scraped', canvas.width / 2, canvas.height / 2);
       }
@@ -1481,10 +1481,10 @@ function loadDemoConfig() {
       if (statusEl) {
         if (d.email_configured) {
           statusEl.textContent = '🟢 Email configured';
-          statusEl.style.color = '#22C55E';
+          statusEl.style.color = '#10D9A0';
         } else {
           statusEl.textContent = '🔴 Add credentials to backend/.env';
-          statusEl.style.color = '#EF4444';
+          statusEl.style.color = '#F05555';
         }
       }
       if (recipEl && d.recipient) recipEl.textContent = d.recipient;
@@ -1510,10 +1510,10 @@ function loadDemoConfig() {
 var DEMO_FAN_KEY = 'marcus';
 
 var DEMO_FAN_ACTIONS = {
-  marcus: { label:'Upsell',         color:'#C9A84C', desc:'Platinum · loyalty 91 · risk 8%. Lead with exclusivity and upgrade experience, not price.' },
-  priya:  { label:'Win-Back',       color:'#EF4444', desc:'At-Risk · loyalty 44 · risk 74%. Personal and warm — "we\'ve missed you." Bigger discount, bonus points.' },
-  david:  { label:'Retention',      color:'#3B82F6', desc:'Silver · loyalty 58 · risk 41%. Urgency-led — lock in your spot + loyalty nudge toward Gold tier.' },
-  lisa:   { label:'Re-acquisition', color:'#8B5CF6', desc:'Bronze · loyalty 29 · risk 55%. Low pressure, biggest discount, food included — just get them back in the door.' },
+  marcus: { label:'Upsell',         color:'#22D3EE', desc:'Platinum · loyalty 91 · risk 8%. Lead with exclusivity and upgrade experience, not price.' },
+  priya:  { label:'Win-Back',       color:'#F05555', desc:'At-Risk · loyalty 44 · risk 74%. Personal and warm — "we\'ve missed you." Bigger discount, bonus points.' },
+  david:  { label:'Retention',      color:'#10D9A0', desc:'Silver · loyalty 58 · risk 41%. Urgency-led — lock in your spot + loyalty nudge toward Gold tier.' },
+  lisa:   { label:'Re-acquisition', color:'#A78BFA', desc:'Bronze · loyalty 29 · risk 55%. Low pressure, biggest discount, food included — just get them back in the door.' },
 };
 
 function selectDemoFan(fanKey, btn) {
@@ -1522,7 +1522,8 @@ function selectDemoFan(fanKey, btn) {
   document.querySelectorAll('.poc-fan-btn').forEach(function(b) {
     b.style.background = 'transparent';
     b.style.color = 'var(--muted-hi)';
-    b.style.borderColor = 'var(--border)';
+    b.style.borderColor = 'var(--border-hi)';
+    b.style.borderRadius = '20px';
   });
   var cfg = DEMO_FAN_ACTIONS[fanKey] || DEMO_FAN_ACTIONS.marcus;
   btn.style.background = 'rgba(' + hexToRgb(cfg.color) + ',0.15)';

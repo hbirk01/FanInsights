@@ -61,7 +61,7 @@ var chartsInit = false;
 var chartInstances = {};
 
 var GOLD = '#F5A524', GOLD2 = '#FBBF24', BLUE = '#22D3EE', GREEN = '#10D9A0',
-    RED = '#F05555', PURPLE = '#A78BFA', ORANGE = '#FB923C', MUTED = '#4D6E96', GRID = '#1C2E4A';
+    RED = '#F05555', PURPLE = '#A78BFA', ORANGE = '#FB923C', MUTED = '#7A9EC4', GRID = '#1C2E4A';
 
 // ── mock fallback data ────────────────────────────────────────────────────────
 var fans = [
@@ -913,7 +913,7 @@ function renderModelTab() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#0A1324';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#4D6E96';
+        ctx.fillStyle = '#7A9EC4';
         ctx.font = '13px DM Sans, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(cfg.sport + ' data not yet scraped', canvas.width / 2, canvas.height / 2);

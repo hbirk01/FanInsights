@@ -67,11 +67,6 @@
   .nav-tab:hover{color:var(--muted-hi);}
   .nav-tab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
   .nav-right{display:flex;align-items:center;gap:0.75rem;flex-shrink:0;}
-  .badge-pwc{
-    background:#C62828;color:white;
-    font-size:0.62rem;font-weight:700;padding:3px 8px;
-    border-radius:4px;letter-spacing:0.8px;
-  }
   .team-selector{
     background:var(--surface2);border:1px solid var(--border-hi);
     color:var(--text);padding:6px 10px;border-radius:var(--radius-sm);
@@ -249,7 +244,7 @@
 <nav>
   <div class="logo-wrap">
     <div class="logo-mark">FQ</div>
-    <div><span class="logo">FanInsights</span><span class="logo-sub">Powered by PwC Analytics</span></div>
+    <div><span class="logo">FanInsights</span><span class="logo-sub">Fan Intelligence Platform</span></div>
   </div>
   <div class="nav-tabs">
     <div class="nav-tab active" onclick="showPage('overview',this)">Overview</div>
@@ -289,7 +284,6 @@
         <option value="long_beach">Long Beach GP</option>
       </optgroup>
     </select>
-    <span class="badge-pwc">PwC</span>
   </div>
 </nav>
 <div class="status-bar">
@@ -485,7 +479,7 @@
       <div style="font-size:0.77rem;color:var(--muted);margin-top:0.5rem">NLP keyword analysis of ESPN news headlines. Positive (win, champion, extend) vs. negative (injured, loss, suspend). Feeds into loyalty score model.</div>
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">F1 Race Calendar <span class="rb">ESPN</span></div><span style="font-size:0.74rem;color:var(--muted)">PwC F1 partnership events</span></div>
+      <div class="card-header"><div class="card-title">F1 Race Calendar <span class="rb">ESPN</span></div><span style="font-size:0.74rem;color:var(--muted)">Race calendar</span></div>
       <div id="real-f1"><div style="color:var(--muted)">Loading…</div></div>
       <div class="insight" style="margin-top:1rem"><div class="insight-label">F1 Fan Intelligence</div><div class="insight-text">Same FanIQ model for F1: geo-triggered hospitality offers, paddock tour upsells, merchandise delivery to grandstand seats. Live data from ESPN F1 scoreboard API.</div></div>
     </div>
@@ -764,7 +758,7 @@
     <div class="card"><div class="card-header"><div class="card-title">Churn Probability Distribution</div></div><canvas id="churnDistChart" height="220"></canvas><div id="predict-churn-sub" style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem">3,847 fans in high-risk zone (&gt;70%). Intervention targeting top 500 highest-LTV at-risk fans.</div></div>
   </div>
   <div class="card">
-    <div class="card-header"><div class="card-title">PwC Sports Practice Benchmarks <span class="rb" id="predict-benchmark-badge">2024 NFL</span></div></div>
+    <div class="card-header"><div class="card-title">Industry Benchmarks <span class="rb" id="predict-benchmark-badge">2024 NFL</span></div></div>
     <canvas id="benchmarkChart" height="120"></canvas>
     <div style="margin-top:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.8rem">
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--gold);margin-right:5px"></span>Your Team</span>

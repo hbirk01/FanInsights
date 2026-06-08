@@ -191,6 +191,9 @@ function updateTeam(val) {
   // Sync the predictor dropdown
   var predTeam = document.getElementById('pred-team');
   if (predTeam) predTeam.value = val;
+  // Keep Game Day nav button in sync with active team
+  var gdBtn = document.getElementById('gameday-nav-btn');
+  if (gdBtn) gdBtn.href = '/gameday.html?team=' + val;
   refreshRealDataPanels();
   initCharts();
   renderModelTab();   // re-render model tab for the active sport
@@ -914,6 +917,10 @@ function boot() {
 
 // ── model tab ─────────────────────────────────────────────────────────────────
 
+function onModelSelectorChange() {
+  renderModelTab();
+}
+
 function renderModelTab() {
   if (!MODEL) return;
 
@@ -950,11 +957,24 @@ function renderModelTab() {
 
   var lm   = sportModel.linear_model || {};
   var rf   = sportModel.rf_model || {};
+  var gb   = sportModel.gb_model || {};
   var meth = sportModel.methodology || {};
   var mc   = sportModel.model_comparison || {};
   var en   = mc.elasticnet || {};
   var rfmc = mc.randomforest || {};
+  var gbmc = mc.gradboost || {};
   var flabels = sportModel.feature_labels || {};
+
+  // ── Model selector ──────────────────────────────────────────────────────────
+  var selEl = document.getElementById('model-selector');
+  var selectedModel = selEl ? selEl.value : 'ridge';
+  var MODEL_LABELS = { ridge:'Ridge Regression', elasticnet:'ElasticNet', randomforest:'Random Forest', gradboost:'Gradient Boosting' };
+  var selectedModelLabel = MODEL_LABELS[selectedModel] || 'Ridge Regression';
+  var selMc = selectedModel === 'elasticnet' ? en
+            : selectedModel === 'randomforest' ? rfmc
+            : selectedModel === 'gradboost'    ? gbmc
+            : (mc.ridge || {});
+  var isTreeModel = (selectedModel === 'randomforest' || selectedModel === 'gradboost');
 
   // ── team-specific game data from REAL ──────────────────────────────────────
   var td        = teamData();
@@ -964,7 +984,12 @@ function renderModelTab() {
 
   // ── team-specific predictions from MODEL ───────────────────────────────────
   // predictions live at the top-level MODEL.predictions, not inside MODEL.nfl
-  var allPreds  = (sportModel.predictions || MODEL.predictions || []).filter(function(p){ return p.actual && p.predicted; });
+  var _predSource = selectedModel === 'randomforest'
+    ? (sportModel.rf_predictions || MODEL.rf_predictions || [])
+    : selectedModel === 'gradboost'
+      ? (sportModel.gb_predictions || MODEL.gb_predictions || [])
+      : (sportModel.predictions || MODEL.predictions || []);
+  var allPreds = _predSource.filter(function(p){ return p.actual && p.predicted; });
   var teamPreds = allPreds.filter(function(p){ return p.team === ACTIVE_TEAM; });
   var hasPreds  = teamPreds.length > 0;
 
@@ -975,27 +1000,23 @@ function renderModelTab() {
     teamMape = (mapeSum / teamPreds.length * 100);
   }
 
-  // Best model
-  var bestMc   = (rfmc.test_mape != null && en.test_mape != null && rfmc.test_mape < en.test_mape) ? rfmc : en;
-  var bestName = (rfmc.test_mape != null && en.test_mape != null && rfmc.test_mape < en.test_mape) ? 'Random Forest' : 'ElasticNet';
-
   // ── title + subtitle ───────────────────────────────────────────────────────
-  setEl('model-sport-title', sportIcon + ' ' + teamName + ' — Attendance Prediction Model');
+  setEl('model-sport-title', teamName + ' — Attendance Prediction Model');
   var sub = document.querySelector('#page-model .section-sub');
   var seasons = (teamGames.length ? [...new Set(teamGames.map(function(g){ return g.season; }))].sort() : meth.seasons || []);
   if (sub) sub.textContent = 'Real ESPN data · ' + teamName + ' · '
     + teamGames.length + ' home games · seasons ' + (seasons[0] || '—') + '–' + (seasons[seasons.length-1] || '—')
     + ' · league model trained on ' + (meth.n_teams || '—') + ' teams';
 
-  // ── stat cards (team-specific where possible) ──────────────────────────────
+  // ── stat cards — show selected model's league metrics + team MAPE ──────────
   setEl('m-sport-badge', sportName);
   setEl('m-samples', teamGames.length || (hasPreds ? teamPreds.length : (meth.n_training_samples || '—')));
   setEl('m-samples-sub', teamName + ' home games · ' + sportName);
-  setEl('m-lin-r2',  teamMape != null ? teamMape.toFixed(1) + '%' : (en.test_r2 != null ? en.test_r2.toFixed(3) : '—'));
-  setEl('m-lin-mae', teamMape != null ? 'MAPE (this team)' : (en.test_mape != null ? en.test_mape.toFixed(1) + '% MAPE' : '—'));
-  setEl('m-rf-r2',   bestMc.test_r2 != null ? bestMc.test_r2.toFixed(3) : '—');
-  setEl('m-rf-mae',  bestMc.test_mae != null ? Math.round(bestMc.test_mae).toLocaleString() + ' fans' : '—');
-  setEl('m-rf-name', bestName + ' · League-wide · MAE: ');
+  setEl('m-lin-r2',  teamMape != null ? teamMape.toFixed(1) + '%' : (selMc.test_mape != null ? selMc.test_mape.toFixed(1) + '%' : '—'));
+  setEl('m-lin-mae', teamMape != null ? 'MAPE · ' + teamName : (selMc.test_mape != null ? 'Test MAPE · ' + selectedModelLabel : '—'));
+  setEl('m-rf-r2',   selMc.test_r2 != null ? selMc.test_r2.toFixed(3) : '—');
+  setEl('m-rf-mae',  selMc.test_mae != null ? Math.round(selMc.test_mae).toLocaleString() + ' fans' : '—');
+  setEl('m-rf-name', selectedModelLabel + ' · League-wide · MAE: ');
   // CI from team's own attendance std dev
   var teamAtts = teamGames.map(function(g){ return g.attendance; });
   var teamCi = teamAtts.length > 1
@@ -1092,13 +1113,24 @@ function renderModelTab() {
     }
   });
 
-  // ── Feature importance: per-team |Pearson r| sorted by strength ────────────
-  // Uses this team's real game data, not league-wide RF importances
-  var fiPairs = teamCorrPairs.length ? teamCorrPairs : (function(){
-    var fi = rf.feature_importance || {};
-    return Object.keys(fi).slice(0,10).map(function(k){ return { label:flabels[k]||k, r:fi[k] }; });
-  })();
-  var fiLabel = teamCorrPairs.length ? teamName + ' · Feature Correlation Strength' : 'League-wide RF Importance';
+  // ── Feature importance: model-specific or team Pearson |r| ─────────────────
+  var fiPairs, fiLabel, fiTooltipLabel;
+  if (isTreeModel) {
+    // Use the selected tree model's stored importances (gain-based)
+    var fiSrc = (selectedModel === 'gradboost' ? gb : rf).feature_importance || {};
+    var fiSorted = Object.keys(fiSrc).sort(function(a,b){ return fiSrc[b]-fiSrc[a]; }).slice(0,12);
+    fiPairs = fiSorted.map(function(k){ return { label: flabels[k]||k, r: fiSrc[k] }; });
+    fiLabel = selectedModelLabel + ' · Feature Importance (Gain)';
+    fiTooltipLabel = function(ctx){ return 'importance = ' + ctx.parsed.x.toFixed(4) + ' (' + selectedModelLabel + ')'; };
+  } else {
+    // Linear models: use team Pearson |r| or fall back to stored correlations
+    fiPairs = teamCorrPairs.length ? teamCorrPairs : (function(){
+      var fi = rf.feature_importance || {};
+      return Object.keys(fi).slice(0,10).map(function(k){ return { label:flabels[k]||k, r:fi[k] }; });
+    })();
+    fiLabel = teamCorrPairs.length ? teamName + ' · Feature Correlation Strength' : 'League-wide RF Importance';
+    fiTooltipLabel = function(ctx){ return '|r| = ' + ctx.parsed.x.toFixed(3) + ' (' + teamName + ')'; };
+  }
   destroyChart('modelFIChart');
   chartInstances['modelFIChart'] = new Chart(document.getElementById('modelFIChart'), {
     type: 'bar',
@@ -1112,7 +1144,7 @@ function renderModelTab() {
       responsive: true, maintainAspectRatio: false,
       indexAxis:'y',
       plugins:{ legend:{ display:false },
-        tooltip:{ callbacks:{ label:function(ctx){ return '|r| = ' + ctx.parsed.x.toFixed(3) + ' (' + teamName + ')'; } } } },
+        tooltip:{ callbacks:{ label: fiTooltipLabel } } },
       scales:{ x:{ ticks:{ color:MUTED, font:{size:10}, callback:function(v){ return v.toFixed(2); } }, grid:{ color:GRID } }, y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } } }
     }
   });
@@ -1124,43 +1156,65 @@ function renderModelTab() {
   var fiHeaders = document.querySelectorAll('#page-model .card-title');
   fiHeaders.forEach(function(h){ if (h.textContent.indexOf('RF Feature') >= 0) h.textContent = fiLabel; });
 
-  // ── Linear coefficients: per-team OLS estimate (β = r × σy / σx) ──────────
-  // Univariate OLS gives team-specific directional impact per unit of each feature
-  var stdY = stdDev(atts);
-  var olsPairs = featDefs.map(function(fd) {
-    var xs = teamGames.map(fd.fn);
-    var r  = pearsonR(xs, atts);
-    if (r === null) return null;
-    var sx = stdDev(xs);
-    var beta = sx > 0.001 ? r * stdY / sx : 0;
-    return { label: fd.label, beta: beta };
-  }).filter(Boolean).sort(function(a,b){ return Math.abs(b.beta) - Math.abs(a.beta); });
+  // ── Bottom-right chart: OLS coefficients (linear) or importance (tree) ──────
+  var coeffPairs, cVals2, coeffChartTooltip, coeffXCallback, coeffCardTitle;
+  if (isTreeModel) {
+    // For tree models: show feature importances (positive only, directionally neutral)
+    var ciSrc = (selectedModel === 'gradboost' ? gb : rf).feature_importance || {};
+    var ciKeys = Object.keys(ciSrc).sort(function(a,b){ return ciSrc[b]-ciSrc[a]; }).slice(0,12);
+    coeffPairs = ciKeys.map(function(k){ return { label: flabels[k]||k, beta: ciSrc[k] }; });
+    coeffCardTitle = selectedModelLabel + ' · Feature Importance';
+    coeffChartTooltip = function(ctx){
+      return 'importance = ' + ctx.parsed.x.toFixed(4) + ' (' + selectedModelLabel + ')';
+    };
+    coeffXCallback = function(v){ return v.toFixed(3); };
+  } else {
+    // Linear models: per-team OLS β = r × σy / σx (directional)
+    var stdY = stdDev(atts);
+    var olsPairs = featDefs.map(function(fd) {
+      var xs = teamGames.map(fd.fn);
+      var r  = pearsonR(xs, atts);
+      if (r === null) return null;
+      var sx = stdDev(xs);
+      var beta = sx > 0.001 ? r * stdY / sx : 0;
+      return { label: fd.label, beta: beta };
+    }).filter(Boolean).sort(function(a,b){ return Math.abs(b.beta) - Math.abs(a.beta); });
 
-  // Fall back to league coefficients if no team data
-  var useLeagueCoeffs = !olsPairs.length;
-  if (useLeagueCoeffs) {
-    var coeffs = lm.coefficients || {};
-    var cKeys  = Object.keys(coeffs).sort(function(a,b){ return Math.abs(coeffs[b]) - Math.abs(coeffs[a]); }).slice(0, 10);
-    olsPairs = cKeys.map(function(k){ return { label: flabels[k]||k, beta: coeffs[k] }; });
+    var useLeagueCoeffs = !olsPairs.length;
+    if (useLeagueCoeffs) {
+      var coeffs = lm.coefficients || {};
+      var cKeys2 = Object.keys(coeffs).sort(function(a,b){ return Math.abs(coeffs[b]) - Math.abs(coeffs[a]); }).slice(0,10);
+      olsPairs = cKeys2.map(function(k){ return { label: flabels[k]||k, beta: coeffs[k] }; });
+    }
+    coeffPairs = olsPairs;
+    coeffCardTitle = useLeagueCoeffs ? 'League-wide Linear Coefficients' : teamName + ' · Estimated Fans per Unit';
+    coeffChartTooltip = function(ctx){
+      var v = ctx.parsed.x;
+      return (v>0?'↑ +':' ↓ ')+Math.round(Math.abs(v)).toLocaleString()+' fans per unit increase (' + teamName + ')';
+    };
+    coeffXCallback = function(v){ return (v>0?'+':'')+Math.round(v); };
   }
-  var coeffLabel = useLeagueCoeffs ? 'League-wide Linear Coefficients' : teamName + ' · Estimated Fans per Unit';
-  var cVals2 = olsPairs.map(function(p){ return p.beta; });
+  cVals2 = coeffPairs.map(function(p){ return p.beta; });
+  var cColors2 = isTreeModel
+    ? cVals2.map(function(v, i, arr) {
+        var stops = ['#22D3EE','#38BDF8','#60A5FA','#818CF8','#A78BFA'];
+        return stops[Math.min(Math.floor((arr.length > 1 ? i/(arr.length-1) : 0) * stops.length), stops.length-1)];
+      })
+    : cVals2.map(function(v){ return v>=0?'rgba(16,217,160,0.75)':'rgba(240,85,85,0.75)'; });
+
   destroyChart('modelCoeffChart');
   chartInstances['modelCoeffChart'] = new Chart(document.getElementById('modelCoeffChart'), {
     type: 'bar',
-    data: { labels: olsPairs.map(function(p){ return p.label; }),
-            datasets: [{ data: cVals2, backgroundColor: cVals2.map(function(v){ return v>=0?'rgba(16,217,160,0.75)':'rgba(240,85,85,0.75)'; }), borderWidth:0 }] },
+    data: { labels: coeffPairs.map(function(p){ return p.label; }),
+            datasets: [{ data: cVals2, backgroundColor: cColors2, borderWidth:0 }] },
     options: {
       indexAxis:'y',
       plugins:{ legend:{ display:false },
-        tooltip:{ callbacks:{ label:function(ctx){
-          var v = ctx.parsed.x;
-          return (v>0?'↑ +':' ↓ ')+Math.round(Math.abs(v)).toLocaleString()+' fans per unit increase (' + teamName + ')';
-        }}}
+        tooltip:{ callbacks:{ label: coeffChartTooltip } }
       },
       responsive: true, maintainAspectRatio: false,
       scales:{
-        x:{ ticks:{ color:MUTED, font:{size:10}, callback:function(v){return (v>0?'+':'')+Math.round(v);} }, grid:{ color:GRID } },
+        x:{ ticks:{ color:MUTED, font:{size:10}, callback: coeffXCallback }, grid:{ color:GRID } },
         y:{ ticks:{ color:MUTED, font:{size:10} }, grid:{ color:GRID } }
       }
     }
@@ -1185,6 +1239,7 @@ function renderModelTab() {
       { name:'Ridge Regression',    d:mc.ridge||{} },
       { name:'ElasticNet (L1+L2)',  d:mc.elasticnet||{} },
       { name:'Random Forest',       d:mc.randomforest||{} },
+      { name:'Gradient Boosting',   d:mc.gradboost||{} },
     ];
     var baseMape = meth.naive_baseline_test_mape;
     tbody.innerHTML = mcRows.map(function(r){
@@ -1192,7 +1247,10 @@ function renderModelTab() {
       var beats = (!r.floor && d.test_mape != null && baseMape != null && d.test_mape < baseMape);
       var beatCell = r.floor ? '<span style="color:var(--muted)">— floor —</span>'
                     : (beats ? '<span style="color:var(--green)">✓ beats baseline</span>' : '<span style="color:var(--muted)">at baseline</span>');
-      return '<tr><td><strong>' + r.name + '</strong></td>'
+      var isActive = !r.floor && r.name === selectedModelLabel;
+      var rowStyle = isActive ? ' style="background:rgba(34,211,238,0.06);outline:1px solid rgba(34,211,238,0.25)"' : '';
+      var nameCell = isActive ? '<strong>' + r.name + '</strong> <span style="font-size:10px;color:var(--cyan);font-family:\'DM Mono\',monospace">▶ active</span>' : '<strong>' + r.name + '</strong>';
+      return '<tr' + rowStyle + '><td>' + nameCell + '</td>'
         + '<td>' + (d.train_r2!=null?d.train_r2.toFixed(3):'—') + '</td>'
         + '<td>' + (d.val_r2!=null?d.val_r2.toFixed(3):'—') + '</td>'
         + '<td style="font-weight:700;color:var(--gold)">' + (d.test_r2!=null?d.test_r2.toFixed(3):'—') + '</td>'

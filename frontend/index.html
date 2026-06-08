@@ -284,6 +284,11 @@
         <option value="long_beach">Long Beach GP</option>
       </optgroup>
     </select>
+    <a id="gameday-nav-btn" href="/gameday.html?team=sf49ers"
+       style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;background:var(--cyan);color:#050B18;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:opacity .15s"
+       onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+      ⚡ Game Day
+    </a>
   </div>
 </nav>
 <div class="status-bar">
@@ -770,7 +775,21 @@
 
 <!-- ═══════ MODEL ═══════ -->
 <div id="page-model" class="page">
-  <div class="sh"><h1 id="model-sport-title">🔬 NFL Attendance Prediction Model</h1><p class="section-sub">Real ESPN data · loading…</p></div>
+  <div class="sh" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <h1 id="model-sport-title">NFL Attendance Prediction Model</h1>
+      <p class="section-sub">Real ESPN data · loading…</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding-bottom:4px">
+      <label style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.04em">MODEL</label>
+      <select id="model-selector" onchange="onModelSelectorChange()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border-hi);border-radius:8px;padding:7px 12px;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;outline:none;min-width:175px">
+        <option value="ridge">Ridge Regression</option>
+        <option value="elasticnet">ElasticNet</option>
+        <option value="randomforest">Random Forest</option>
+        <option value="gradboost">Gradient Boosting</option>
+      </select>
+    </div>
+  </div>
 
   <!-- metric cards -->
   <div class="g4">

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Game Day · FanInsights</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── tokens ─────────────────────────────────────────────────────────────── */
+    :root {
+      --cyan:       #22D3EE;
+      --cyan-dim:   rgba(34,211,238,0.10);
+      --cyan-glow:  rgba(34,211,238,0.18);
+      --bg:         #050B18;
+      --surface:    #0A1324;
+      --surface2:   #0F1C35;
+      --surface3:   #162440;
+      --border:     #1C2E4A;
+      --border-hi:  #263D62;
+      --text:       #EBF3FF;
+      --muted:      #7A9EC4;
+      --muted-hi:   #A8C8E8;
+      --green:      #10D9A0;
+      --red:        #F05555;
+      --amber:      #F5A524;
+      --purple:     #A78BFA;
+      --r:          12px;
+      --max:        430px;
+    }
+
+    /* ── reset ──────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100dvh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+
+    /* ── layout ─────────────────────────────────────────────────────────────── */
+    .page {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 16px env(safe-area-inset-bottom, 32px);
+    }
+
+    /* ── sticky header ───────────────────────────────────────────────────────── */
+    .app-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(5,11,24,0.88);
+      backdrop-filter: blur(16px) saturate(1.4);
+      -webkit-backdrop-filter: blur(16px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .header-logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .06em;
+      flex: 1;
+      white-space: nowrap;
+    }
+    .header-logo strong { color: var(--text); }
+    .gd-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .12em;
+      background: var(--cyan);
+      color: #050B18;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .header-select {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border-hi);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      outline: none;
+      max-width: 130px;
+    }
+
+    /* ── loading ─────────────────────────────────────────────────────────────── */
+    #loading {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 60vh; gap: 16px; color: var(--muted);
+      font-size: 13px; font-family: 'DM Mono', monospace;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── error state ─────────────────────────────────────────────────────────── */
+    #error-state {
+      display: none; padding: 40px 24px; text-align: center;
+      color: var(--muted); font-size: 14px;
+    }
+    #error-state .err-icon { font-size: 2rem; margin-bottom: 12px; }
+    #error-state .err-msg  { color: var(--red); margin-bottom: 8px; font-weight: 600; }
+
+    /* ── main app ────────────────────────────────────────────────────────────── */
+    #app { display: none; }
+
+    /* ── cards ───────────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+      margin-top: 12px;
+    }
+    .card-label {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: .12em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── matchup banner ──────────────────────────────────────────────────────── */
+    .matchup-card {
+      background: var(--surface2);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--r);
+      padding: 24px 20px 20px;
+      margin-top: 12px;
+      text-align: center;
+    }
+    .vs-chip {
+      display: inline-block;
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: .1em;
+      color: var(--muted);
+      border: 1px solid var(--border-hi);
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-bottom: 10px;
+    }
+    .opponent-name {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .game-meta-line {
+      font-size: 13px;
+      color: var(--muted-hi);
+      margin-bottom: 12px;
+    }
+    .tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .tag {
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid var(--border-hi);
+      color: var(--muted-hi);
+      background: var(--surface3);
+    }
+    .tag.highlight { border-color: rgba(34,211,238,0.4); color: var(--cyan); background: var(--cyan-dim); }
+
+    /* ── attendance hero ─────────────────────────────────────────────────────── */
+    .attendance-card {
+      background: var(--surface);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--r);
+      padding: 28px 24px 24px;
+      margin-top: 12px;
+      text-align: center;
+    }
+    .att-label {
+      font-size: 10px; font-family: 'DM Mono', monospace;
+      letter-spacing: .12em; color: var(--muted); margin-bottom: 16px;
+    }
+    .att-number {
+      font-family: 'DM Mono', monospace;
+      font-size: 3.2rem;
+      font-weight: 500;
+      color: var(--cyan);
+      letter-spacing: -.02em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .att-sub {
+      font-size: 13px;
+      color: var(--muted-hi);
+      margin-bottom: 20px;
+    }
+    .att-sub .ci { color: var(--amber); font-family: 'DM Mono', monospace; }
+    .att-sub .sep { color: var(--border-hi); margin: 0 8px; }
+
+    /* capacity gauge */
+    .gauge-wrap {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 10px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .gauge-fill {
+      height: 100%;
+      border-radius: 6px;
+      width: 0%;
+      transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .gauge-labels {
+      display: flex; justify-content: space-between;
+      font-size: 10px; font-family: 'DM Mono', monospace;
+      color: var(--muted);
+    }
+    .gauge-pct { font-weight: 500; color: var(--muted-hi); }
+
+    /* actual result (shown if game has already played) */
+    .actual-result {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .actual-result .label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: .06em; }
+    .actual-result .val   { font-size: 14px; font-family: 'DM Mono', monospace; color: var(--text); font-weight: 500; }
+    .actual-result .err   { font-size: 11px; color: var(--amber); font-family: 'DM Mono', monospace; }
+
+    /* score */
+    .score-line {
+      margin-top: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .score-line .won  { color: var(--green); }
+    .score-line .lost { color: var(--red); }
+
+    /* ── weather strip ───────────────────────────────────────────────────────── */
+    .weather-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px 20px;
+      margin-top: 12px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .weather-icon { font-size: 2rem; flex-shrink: 0; }
+    .weather-info { flex: 1; }
+    .weather-main { font-size: 15px; font-weight: 600; color: var(--text); }
+    .weather-sub  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .weather-sev  {
+      font-size: 10px; font-family: 'DM Mono', monospace;
+      padding: 3px 8px; border-radius: 4px;
+      font-weight: 600; white-space: nowrap;
+    }
+    .sev-low  { background: rgba(16,217,160,0.12); color: var(--green); border: 1px solid rgba(16,217,160,0.25); }
+    .sev-mid  { background: rgba(245,165,36,0.12);  color: var(--amber); border: 1px solid rgba(245,165,36,0.25); }
+    .sev-high { background: rgba(240,85,85,0.12);   color: var(--red);   border: 1px solid rgba(240,85,85,0.25); }
+
+    /* ── factors ─────────────────────────────────────────────────────────────── */
+    .factors-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; margin-top: 12px; }
+    .factor-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .factor-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .factor-row:first-child { padding-top: 0; }
+    .factor-arrow { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
+    .factor-label { flex: 1; font-size: 14px; color: var(--muted-hi); }
+    .factor-impact {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .impact-up   { color: var(--green); }
+    .impact-down { color: var(--red); }
+
+    /* ── recommendation ──────────────────────────────────────────────────────── */
+    .rec-card {
+      border-radius: var(--r);
+      padding: 22px 20px;
+      margin-top: 12px;
+      border: 1px solid var(--border);
+    }
+    .rec-tier {
+      font-size: 10px; font-family: 'DM Mono', monospace;
+      letter-spacing: .12em; color: var(--muted); margin-bottom: 6px;
+    }
+    .rec-strategy {
+      font-size: 1.05rem; font-weight: 700; color: var(--text);
+      margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+    }
+    .rec-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .rec-action { font-size: 13px; color: var(--muted-hi); margin-bottom: 18px; line-height: 1.5; }
+    .rec-btn {
+      display: block; width: 100%;
+      padding: 13px;
+      border-radius: 8px;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: opacity .15s;
+    }
+    .rec-btn:active { opacity: .75; }
+
+    /* ── record strip ────────────────────────────────────────────────────────── */
+    .record-strip {
+      display: flex; gap: 1px;
+      margin-top: 12px;
+      border-radius: var(--r);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .rec-seg {
+      flex: 1; padding: 14px 0; text-align: center;
+      background: var(--surface);
+    }
+    .rec-seg + .rec-seg { border-left: 1px solid var(--border); }
+    .rec-seg .rs-val  { font-family: 'DM Mono', monospace; font-size: 1.1rem; font-weight: 500; color: var(--text); }
+    .rec-seg .rs-lbl  { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--muted); letter-spacing: .08em; margin-top: 3px; }
+
+    /* ── footer ──────────────────────────────────────────────────────────────── */
+    .gd-footer {
+      margin-top: 32px; padding: 16px 0 env(safe-area-inset-bottom, 24px);
+      text-align: center;
+      font-size: 11px; font-family: 'DM Mono', monospace;
+      color: var(--muted); letter-spacing: .04em;
+      border-top: 1px solid var(--border);
+    }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted); margin-top: 10px;
+    }
+    .back-link:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- ── sticky header ───────────────────────────────────────────────────────── -->
+<header class="app-header">
+  <div class="header-logo"><strong>FanInsights</strong></div>
+  <span class="gd-badge">GAME DAY</span>
+  <select class="header-select" id="team-select" onchange="switchTeam(this.value)"></select>
+</header>
+
+<!-- ── loading ─────────────────────────────────────────────────────────────── -->
+<div class="page">
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>Loading game data…</span>
+  </div>
+
+  <div id="error-state">
+    <div class="err-icon">⚠️</div>
+    <div class="err-msg" id="err-msg">Failed to load game data</div>
+    <div id="err-detail"></div>
+  </div>
+
+  <!-- ── main app ─────────────────────────────────────────────────────────── -->
+  <div id="app">
+
+    <!-- matchup banner -->
+    <div class="matchup-card">
+      <div class="vs-chip">HOME · <span id="sport-label">NFL</span></div>
+      <div class="opponent-name" id="opponent-name">—</div>
+      <div class="game-meta-line" id="game-meta-line">—</div>
+      <div class="tags" id="game-tags"></div>
+    </div>
+
+    <!-- key stats strip -->
+    <div class="record-strip">
+      <div class="rec-seg">
+        <div class="rs-val" id="strip-record">—</div>
+        <div class="rs-lbl">LAST 5 HOME</div>
+      </div>
+      <div class="rec-seg">
+        <div class="rs-val" id="strip-opp-record">—</div>
+        <div class="rs-lbl">OPP RECORD</div>
+      </div>
+      <div class="rec-seg">
+        <div class="rs-val" id="strip-phase">—</div>
+        <div class="rs-lbl">SEASON PHASE</div>
+      </div>
+    </div>
+
+    <!-- attendance hero -->
+    <div class="attendance-card">
+      <div class="att-label">PREDICTED ATTENDANCE</div>
+      <div class="att-number" id="att-number">—</div>
+      <div class="att-sub">
+        <span class="ci" id="att-ci">±—</span>
+        <span class="sep">·</span>
+        <span id="att-cap-pct">—</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-fill" id="gauge-fill"></div>
+      </div>
+      <div class="gauge-labels">
+        <span>0%</span>
+        <span class="gauge-pct" id="gauge-mid"></span>
+        <span>100%</span>
+      </div>
+      <div class="actual-result" id="actual-result" style="display:none">
+        <div>
+          <div class="label">ACTUAL</div>
+          <div class="val" id="actual-val">—</div>
+        </div>
+        <div style="text-align:right">
+          <div class="label">MODEL ERROR</div>
+          <div class="err" id="model-err">—</div>
+        </div>
+        <div style="text-align:right">
+          <div class="label">RESULT</div>
+          <div class="score-line" id="score-line">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- weather -->
+    <div class="weather-card" id="weather-card">
+      <div class="weather-icon" id="wx-icon">🌤</div>
+      <div class="weather-info">
+        <div class="weather-main" id="wx-main">—</div>
+        <div class="weather-sub" id="wx-sub">—</div>
+      </div>
+      <div class="weather-sev" id="wx-sev-badge">—</div>
+    </div>
+
+    <!-- key factors -->
+    <div class="factors-card">
+      <div class="card-label">KEY FACTORS TODAY</div>
+      <div id="factors-list"></div>
+    </div>
+
+    <!-- recommendation -->
+    <div class="rec-card" id="rec-card">
+      <div class="rec-tier" id="rec-tier">TODAY'S RECOMMENDED STRATEGY</div>
+      <div class="rec-strategy">
+        <div class="rec-dot" id="rec-dot"></div>
+        <span id="rec-strategy-name">—</span>
+      </div>
+      <div class="rec-action" id="rec-action">—</div>
+      <a class="rec-btn" id="rec-btn" href="/">Open Fan Strategies →</a>
+    </div>
+
+    <!-- footer -->
+    <div class="gd-footer">
+      FanInsights · Real ESPN Data · Ridge + RF + GradBoost Models
+      <br>
+      <a class="back-link" href="/">← Back to Dashboard</a>
+    </div>
+
+  </div><!-- #app -->
+</div><!-- .page -->
+
+<script src="gameday.js"></script>
+</body>
+</html>

@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "faninsights-backend",
+      "runtimeExecutable": "python3.13",
+      "runtimeArgs": ["-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "/Users/Harvin/FanInsights/backend"],
+      "port": 8000
+    },
+    {
       "name": "faninsights-frontend",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "5180", "--directory", "/Users/Harvin/FanInsights/frontend"],

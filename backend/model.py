@@ -362,7 +362,7 @@ def run_model(sport):
 
     # ── Random Forest ──────────────────────────────────────────────────────────
     print(f"\n  🌲 Random Forest (val-tuned):")
-    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
     best_rf, best_rf_val = None, -999
     for ne in [100, 200]:
         for md in [2, 3, 4]:
@@ -378,6 +378,28 @@ def run_model(sport):
     rf_va = eval_split("RandomForest", y_va, best_rf.predict(X_va_s), val_idx,   "val")
     rf_te = eval_split("RandomForest", y_te, best_rf.predict(X_te_s), test_idx,  "test")
     rf_importance = {ACTIVE_KEYS[i]: round(float(best_rf.feature_importances_[i]),4)
+                     for i in range(len(ACTIVE_KEYS))}
+
+    # ── Gradient Boosting ──────────────────────────────────────────────────────
+    print(f"\n  🚀 Gradient Boosting (val-tuned):")
+    best_gb, best_gb_val = None, -999
+    for ne in [100, 200, 300]:
+        for lr in [0.05, 0.1, 0.2]:
+            for md in [3, 4, 5]:
+                for ss in [0.8, 1.0]:
+                    gb = GradientBoostingRegressor(
+                        n_estimators=ne, learning_rate=lr, max_depth=md,
+                        subsample=ss, random_state=42
+                    )
+                    gb.fit(X_tr_s, y_tr)
+                    vr2 = float(sk_r2(y_va, gb.predict(X_va_s)))
+                    if vr2 > best_gb_val:
+                        best_gb_val, best_gb = vr2, gb
+    print(f"     Best n_est={best_gb.n_estimators} lr={best_gb.learning_rate} depth={best_gb.max_depth} sub={best_gb.subsample} (val R²={best_gb_val:.3f})")
+    gb_tr = eval_split("GradBoost", y_tr, best_gb.predict(X_tr_s), train_idx, "train")
+    gb_va = eval_split("GradBoost", y_va, best_gb.predict(X_va_s), val_idx,   "val")
+    gb_te = eval_split("GradBoost", y_te, best_gb.predict(X_te_s), test_idx,  "test")
+    gb_importance = {ACTIVE_KEYS[i]: round(float(best_gb.feature_importances_[i]),4)
                      for i in range(len(ACTIVE_KEYS))}
 
     # ── model comparison ───────────────────────────────────────────────────────
@@ -479,6 +501,45 @@ def run_model(sport):
             "residual": int(r["attendance_raw"]) - pred_raw,
         })
 
+    # ── Per-model predictions for scatter chart switching ─────────────────────
+    print(f"\n  📦 Generating per-model predictions on full dataset...")
+
+    # Random Forest — retrain on all data then predict
+    rf_final = RandomForestRegressor(
+        n_estimators=best_rf.n_estimators, max_depth=best_rf.max_depth,
+        min_samples_leaf=best_rf.min_samples_leaf, random_state=42
+    )
+    rf_final.fit(X_std, y_sqrt_norm)
+    rf_pred_all_raw = inv_transform(rf_final.predict(X_std), list(range(len(all_records))))
+    rf_game_preds = []
+    for i, r in enumerate(all_records):
+        split = "train" if i in split_set_tr else ("val" if i in split_set_va else "test")
+        pred_raw = int(max(0, rf_pred_all_raw[i]))
+        rf_game_preds.append({
+            "team": r["team"], "season": r["season"], "date": r["date"],
+            "opponent": r["opponent"], "won": r["won"], "split": split,
+            "actual": int(r["attendance_raw"]), "predicted": pred_raw,
+            "residual": int(r["attendance_raw"]) - pred_raw,
+        })
+
+    # Gradient Boosting — retrain on all data then predict
+    gb_final = GradientBoostingRegressor(
+        n_estimators=best_gb.n_estimators, learning_rate=best_gb.learning_rate,
+        max_depth=best_gb.max_depth, subsample=best_gb.subsample, random_state=42
+    )
+    gb_final.fit(X_std, y_sqrt_norm)
+    gb_pred_all_raw = inv_transform(gb_final.predict(X_std), list(range(len(all_records))))
+    gb_game_preds = []
+    for i, r in enumerate(all_records):
+        split = "train" if i in split_set_tr else ("val" if i in split_set_va else "test")
+        pred_raw = int(max(0, gb_pred_all_raw[i]))
+        gb_game_preds.append({
+            "team": r["team"], "season": r["season"], "date": r["date"],
+            "opponent": r["opponent"], "won": r["won"], "split": split,
+            "actual": int(r["attendance_raw"]), "predicted": pred_raw,
+            "residual": int(r["attendance_raw"]) - pred_raw,
+        })
+
     test_rmse = ridge_te["rmse"]
     ci_half   = round(test_rmse * 1.96)
 
@@ -511,6 +572,7 @@ def run_model(sport):
             "ridge":        {"train_r2":ridge_tr["r2"],"val_r2":ridge_va["r2"],"test_r2":ridge_te["r2"],"test_mae":ridge_te["mae"],"test_mape":ridge_te["mape"]},
             "elasticnet":   {"train_r2":en_tr["r2"],   "val_r2":en_va["r2"],   "test_r2":en_te["r2"],   "test_mae":en_te["mae"],   "test_mape":en_te["mape"],"alpha":best_a_en,"l1_ratio":best_l1},
             "randomforest": {"train_r2":rf_tr["r2"],   "val_r2":rf_va["r2"],   "test_r2":rf_te["r2"],   "test_mae":rf_te["mae"],   "test_mape":rf_te["mape"]},
+            "gradboost":    {"train_r2":gb_tr["r2"],   "val_r2":gb_va["r2"],   "test_r2":gb_te["r2"],   "test_mae":gb_te["mae"],   "test_mape":gb_te["mape"],"n_estimators":best_gb.n_estimators,"learning_rate":best_gb.learning_rate,"max_depth":best_gb.max_depth},
             "best_by_val":  best_model_name,
         },
         "linear_model": {
@@ -525,7 +587,16 @@ def run_model(sport):
             "rmse":             rf_te["rmse"], "mape": rf_te["mape"],
             "feature_importance": dict(sorted(rf_importance.items(), key=lambda x: -x[1])),
         },
+        "gb_model": {
+            "model_name":       "GradientBoosting",
+            "r2":               gb_te["r2"], "mae": gb_te["mae"],
+            "rmse":             gb_te["rmse"], "mape": gb_te["mape"],
+            "feature_importance": dict(sorted(gb_importance.items(), key=lambda x: -x[1])),
+            "hyperparams": {"n_estimators": best_gb.n_estimators, "learning_rate": best_gb.learning_rate, "max_depth": best_gb.max_depth, "subsample": best_gb.subsample},
+        },
         "predictions":         game_preds,
+        "rf_predictions":      rf_game_preds,
+        "gb_predictions":      gb_game_preds,
         "insights":            [i["text"] for i in insights_raw],
         "insights_detail":     insights_raw,
         "ci_halfwidth":        ci_half,
@@ -558,10 +629,13 @@ if nfl_result:
     results["methodology"]     = nfl_result["methodology"]
     results["linear_model"]    = nfl_result["linear_model"]
     results["rf_model"]        = nfl_result["rf_model"]
+    results["gb_model"]        = nfl_result["gb_model"]
     results["correlations"]    = nfl_result["correlations"]
     results["feature_labels"]  = nfl_result["feature_labels"]
     results["features_used"]   = nfl_result["features_used"]
     results["predictions"]     = nfl_result["predictions"]
+    results["rf_predictions"]  = nfl_result["rf_predictions"]
+    results["gb_predictions"]  = nfl_result["gb_predictions"]
     results["insights"]        = nfl_result["insights"]
     results["ci_halfwidth"]    = nfl_result["ci_halfwidth"]
     results["model_comparison"]= nfl_result["model_comparison"]

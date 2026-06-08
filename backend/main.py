@@ -193,6 +193,161 @@ def trigger_train(background_tasks: BackgroundTasks):
     return {"job_id": job_id, "status": "queued"}
 
 
+@app.get("/api/gameday/{team}", summary="Game day summary for a team")
+def get_gameday(team: str):
+    """
+    Returns a structured game-day payload for the mobile Game Day view:
+    most recent home game info, model prediction, weather, key factors, fan recommendation.
+    """
+    real  = _load_json(REAL_DATA_PATH)
+    model = _load_json(MODEL_RESULT_PATH)
+
+    teams = real.get("teams", {})
+    if team not in teams:
+        raise HTTPException(status_code=404, detail=f"Team '{team}' not found")
+
+    td        = teams[team]
+    team_info = td.get("team_info", {})
+    sport     = td.get("sport", "football")
+    games     = td.get("games", [])
+
+    # Most recent home game with attendance data
+    home_games = sorted(
+        [g for g in games if g.get("is_home") and g.get("attendance", 0) > 0],
+        key=lambda g: g["date"],
+    )
+    if not home_games:
+        raise HTTPException(status_code=404, detail="No home game data found for this team")
+    game = home_games[-1]
+
+    # Sport-specific model block
+    sport_model = model.get("nfl" if sport == "football" else "mlb", model)
+
+    # Look up stored prediction
+    pred_record = next(
+        (p for p in sport_model.get("predictions", []) if p["team"] == team and p["date"] == game["date"]),
+        None,
+    )
+    predicted = pred_record["predicted"] if pred_record else game.get("attendance", 0)
+    ci        = sport_model.get("ci_halfwidth", 2000)
+    capacity  = team_info.get("venue_capacity", 68500) or 68500
+    cap_pct   = round(predicted / capacity * 100, 1) if capacity else None
+
+    # Feature impact calculation via stored Ridge coefficients
+    active_keys = sport_model.get("active_keys", [])
+    feat_mean   = sport_model.get("feat_mean", [])
+    feat_std    = sport_model.get("feat_std", [])
+    ridge_coeffs = sport_model.get("ridge_final_coeffs", [])
+    coeffs      = ridge_coeffs[:-1] if len(ridge_coeffs) == len(feat_mean) + 1 else ridge_coeffs
+    feat_labels = sport_model.get("feature_labels", {})
+    team_mean   = (sport_model.get("team_mean_attendance") or {}).get(team, capacity * 0.95) or capacity * 0.95
+
+    weather = game.get("weather") or {}
+    game_feat_map = {
+        "week_of_season":       game.get("week_of_season", 0),
+        "is_weekend":           1 if game.get("is_weekend") else 0,
+        "is_prime_time":        1 if game.get("is_prime_time") else 0,
+        "weather_severity":     game.get("weather_severity", 0),
+        "avg_wind_kmh":         weather.get("wind_kmh", 0) or 0,
+        "home_streak":          game.get("home_streak", 0),
+        "prev_game_margin":     game.get("prev_game_margin", 0),
+        "is_divisional":        1 if game.get("is_divisional") else 0,
+        "opponent_win_pct":     game.get("opponent_win_pct", 0.5) or 0.5,
+        "matchup_strength":     game.get("matchup_strength", 0) or 0,
+        "is_holiday_week":      1 if game.get("holiday_is_holiday_week") else 0,
+        "is_thanksgiving_week": 1 if game.get("holiday_is_thanksgiving_week") else 0,
+        "season_phase_num":     {"early": 0, "mid": 1, "late": 2}.get(game.get("season_phase", "mid"), 1),
+        "covid_recovery":       1 if game.get("covid_recovery") else 0,
+        "att_lag1_norm":        0,  # not available without full context
+        "att_rolling5_norm":    0,
+    }
+
+    factors = []
+    for i, key in enumerate(active_keys):
+        if i >= len(feat_mean) or i >= len(feat_std) or i >= len(coeffs):
+            continue
+        if feat_std[i] == 0:
+            continue
+        val = game_feat_map.get(key, 0)
+        z   = (val - feat_mean[i]) / feat_std[i]
+        # Ridge coeffs are in sqrt-normalised space; scale by CI halfwidth to get
+        # a fan-scale estimate: coeff × z × ci gives ≈ attendance impact in fans.
+        impact = int(coeffs[i] * z * ci)
+        if abs(impact) > 80:
+            factors.append({
+                "key":       key,
+                "label":     feat_labels.get(key, key),
+                "value":     val,
+                "impact":    impact,
+                "direction": "up" if impact > 0 else "down",
+            })
+    factors.sort(key=lambda f: -abs(f["impact"]))
+    factors = factors[:5]
+
+    # Fan recommendation based on predicted fill %
+    fill   = cap_pct or game.get("fill_pct", 95)
+    ghost  = game.get("ghost_risk") or 0.10
+    if fill < 88:
+        rec = {"strategy": "winback",      "tier": "Priya",  "action": "Re-engagement offer — lapsed fans need a strong nudge today.", "color": "#F05555", "fan": "priya"}
+    elif ghost > 0.25:
+        rec = {"strategy": "reacquisition","tier": "Lisa",   "action": "Targeted win-back for high-risk churners before season ends.",   "color": "#A78BFA", "fan": "lisa"}
+    elif fill > 97:
+        rec = {"strategy": "upsell",       "tier": "Marcus", "action": "Near sellout — drive yield with premium upgrade offers.",        "color": "#22D3EE", "fan": "marcus"}
+    else:
+        rec = {"strategy": "retention",    "tier": "David",  "action": "Solid attendance expected — reinforce the loyalty habit.",       "color": "#10D9A0", "fan": "david"}
+
+    # Recent record (last 5 home games)
+    recent_home = home_games[-5:]
+    home_record = f"{sum(1 for g in recent_home if g.get('won'))}W-{sum(1 for g in recent_home if not g.get('won'))}L"
+
+    return {
+        "team":      team,
+        "team_name": team_info.get("name", team),
+        "venue":     team_info.get("venue_name", "Home Stadium"),
+        "sport":     sport,
+        "game": {
+            "date":            game["date"],
+            "season":          game.get("season"),
+            "opponent":        game.get("opponent", ""),
+            "opponent_abbr":   game.get("opponent_abbr", ""),
+            "opponent_record": game.get("opponent_record", ""),
+            "opponent_win_pct":game.get("opponent_win_pct"),
+            "is_divisional":   game.get("is_divisional", False),
+            "is_prime_time":   game.get("is_prime_time", False),
+            "is_weekend":      game.get("is_weekend", False),
+            "is_holiday_week": game.get("holiday_is_holiday_week", False),
+            "nearest_holiday": game.get("holiday_nearest_holiday", ""),
+            "week":            game.get("week_of_season"),
+            "kickoff_hour":    game.get("kickoff_hour_local"),
+            "season_phase":    game.get("season_phase", ""),
+            "won":             game.get("won"),
+            "our_score":       game.get("our_score"),
+            "opp_score":       game.get("opp_score"),
+            "streak_going_in": game.get("streak_going_in", 0),
+            "streak_dir":      game.get("streak_dir", ""),
+        },
+        "attendance": {
+            "actual":      game.get("attendance"),
+            "predicted":   predicted,
+            "ci":          ci,
+            "capacity":    capacity,
+            "capacity_pct":cap_pct,
+            "fill_pct":    game.get("fill_pct"),
+        },
+        "weather": {
+            "temp_c":     weather.get("temp_c"),
+            "conditions": weather.get("conditions", ""),
+            "wind_kmh":   weather.get("wind_kmh"),
+            "is_rain":    weather.get("is_rain", False),
+            "severity":   game.get("weather_severity", 0),
+        },
+        "factors":         factors,
+        "recommendation":  rec,
+        "home_record_l5":  home_record,
+        "ghost_risk":      ghost,
+    }
+
+
 @app.get("/api/pricing/{team}", summary="Dynamic pricing recommendation")
 def get_pricing(team: str):
     """

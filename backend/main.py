@@ -262,11 +262,17 @@ def get_gameday(team: str):
         "att_rolling5_norm":    0,
     }
 
+    # Keys where a value of 0 means "no data" — skip if missing from the game record
+    _data_dependent = {"avg_wind_kmh", "att_lag1_norm", "att_rolling5_norm"}
+
     factors = []
     for i, key in enumerate(active_keys):
         if i >= len(feat_mean) or i >= len(feat_std) or i >= len(coeffs):
             continue
         if feat_std[i] == 0:
+            continue
+        # Skip wind/lag features when no actual value was scraped
+        if key in _data_dependent and not weather.get("wind_kmh") and key == "avg_wind_kmh":
             continue
         val = game_feat_map.get(key, 0)
         z   = (val - feat_mean[i]) / feat_std[i]

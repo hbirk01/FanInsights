@@ -82,11 +82,14 @@ function weatherIcon(wx) {
   var sev = wx.severity || 0;
   var rain = wx.is_rain;
   var cond = (wx.conditions || '').toLowerCase();
-  if (sev > 0.6 || cond.indexOf('storm') >= 0 || cond.indexOf('thunder') >= 0) return '⛈';
-  if (rain || cond.indexOf('rain') >= 0 || cond.indexOf('shower') >= 0)        return '🌧';
-  if (sev > 0.3 || cond.indexOf('cloud') >= 0 || cond.indexOf('overcast') >= 0) return '⛅';
-  if (cond.indexOf('snow') >= 0 || cond.indexOf('flurr') >= 0)                  return '❄️';
-  if (cond.indexOf('fog') >= 0 || cond.indexOf('haze') >= 0)                    return '🌫';
+  var hasCond = cond.length > 0;
+  // Only use severity-based icons if we also have condition text to confirm
+  if (hasCond && (sev > 0.6 || cond.indexOf('storm') >= 0 || cond.indexOf('thunder') >= 0)) return '⛈';
+  if (rain || cond.indexOf('rain') >= 0 || cond.indexOf('shower') >= 0)                      return '🌧';
+  if (hasCond && (sev > 0.3 || cond.indexOf('cloud') >= 0 || cond.indexOf('overcast') >= 0)) return '⛅';
+  if (cond.indexOf('snow') >= 0 || cond.indexOf('flurr') >= 0)                               return '❄️';
+  if (cond.indexOf('fog') >= 0 || cond.indexOf('haze') >= 0)                                 return '🌫';
+  if (!hasCond) return '🌡';  // no conditions scraped
   return '☀️';
 }
 
@@ -200,9 +203,12 @@ function render(d) {
   setText('wx-sub', wind || 'Wind data unavailable');
 
   var sev = wx.severity || 0;
+  var hasWxData = !!(wx.conditions || wx.temp_c != null || wx.wind_kmh);
   var sevEl = document.getElementById('wx-sev-badge');
   if (sevEl) {
-    if (sev > 0.5) {
+    if (!hasWxData) {
+      sevEl.className = 'weather-sev sev-low'; sevEl.textContent = 'No Data';
+    } else if (sev > 0.5) {
       sevEl.className = 'weather-sev sev-high'; sevEl.textContent = 'High Impact';
     } else if (sev > 0.2) {
       sevEl.className = 'weather-sev sev-mid';  sevEl.textContent = 'Moderate';

@@ -515,6 +515,19 @@
 <!-- ═══════ FAN PROFILES ═══════ -->
 <div id="page-profiles" class="page">
   <div class="sh"><h1>Fan Profile Explorer</h1><p>Individual 360° fan intelligence · Click any row to expand</p></div>
+
+  <!-- Retention funnel -->
+  <div class="g2" style="margin-bottom:1.5rem">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Fan Retention Funnel <span class="rb">Season Cohort</span></div><span style="font-size:0.74rem;color:var(--muted)">Acquisition → Ambassador pipeline</span></div>
+      <div id="retention-funnel" style="padding:0.5rem 0"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Segment Breakdown</div></div>
+      <div style="position:relative;height:220px;"><canvas id="segmentPieChart"></canvas></div>
+    </div>
+  </div>
+
   <div class="g12">
     <div class="card"><div class="card-header"><div class="card-title">Fan Roster</div></div>
       <table class="ftable"><thead><tr><th>Fan</th><th>Tier</th><th>Loyalty</th><th>LTV</th><th>Risk</th></tr></thead><tbody id="fanTableBody"></tbody></table>
@@ -747,6 +760,41 @@
       <div style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem">Platinum fans refer avg 2.3 new fans/season. Each = $820+ LTV. Network effect +18% annually.</div>
     </div>
   </div>
+
+  <!-- ── Revenue Impact Simulator ─────────────────────────────────────────── -->
+  <div class="card mt" style="margin-top:1.5rem">
+    <div class="card-header"><div class="card-title">💰 Revenue Impact Simulator</div><span style="font-size:0.74rem;color:var(--muted)">Adjust parameters to model intervention ROI</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1.2rem;margin-bottom:1.4rem">
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Segment</div>
+        <select id="sim-segment" class="team-selector" style="width:100%" onchange="runSimulator()">
+          <option value="platinum">Platinum ($14,280 LTV)</option>
+          <option value="gold">Gold ($6,840 LTV)</option>
+          <option value="silver">Silver ($2,910 LTV)</option>
+          <option value="bronze">Bronze ($820 LTV)</option>
+        </select>
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">At-Risk Fans: <strong id="sim-atrisk-val">500</strong></div>
+        <input type="range" id="sim-atrisk" min="50" max="3000" step="50" value="500" style="width:100%" oninput="document.getElementById('sim-atrisk-val').textContent=parseInt(this.value).toLocaleString();runSimulator()">
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Save Rate: <strong id="sim-save-val">40%</strong></div>
+        <input type="range" id="sim-save" min="5" max="90" value="40" style="width:100%" oninput="document.getElementById('sim-save-val').textContent=this.value+'%';runSimulator()">
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Campaign Cost ($): <strong id="sim-cost-val">$75K</strong></div>
+        <input type="range" id="sim-cost" min="5" max="500" step="5" value="75" style="width:100%" oninput="document.getElementById('sim-cost-val').textContent='$'+this.value+'K';runSimulator()">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;padding:1.1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+      <div><div class="stat-label" style="font-size:0.7rem">Fans Saved</div><div style="font-size:1.5rem;font-weight:800;color:var(--green)" id="sim-out-saved">—</div></div>
+      <div><div class="stat-label" style="font-size:0.7rem">Recovered LTV</div><div style="font-size:1.5rem;font-weight:800;color:var(--gold)" id="sim-out-ltv">—</div></div>
+      <div><div class="stat-label" style="font-size:0.7rem">Net Profit</div><div style="font-size:1.5rem;font-weight:800;color:var(--cyan)" id="sim-out-profit">—</div></div>
+      <div><div class="stat-label" style="font-size:0.7rem">ROI Multiple</div><div style="font-size:1.5rem;font-weight:800;color:var(--purple)" id="sim-out-roi">—</div></div>
+    </div>
+    <div id="sim-verdict" style="margin-top:0.9rem;font-size:0.82rem;color:var(--muted)"></div>
+  </div>
 </div>
 
 <!-- ═══════ PREDICTIONS ═══════ -->
@@ -778,6 +826,18 @@
     </div>
     <div class="card"><div class="card-header"><div class="card-title">Churn Probability Distribution</div></div><canvas id="churnDistChart" height="220"></canvas><div id="predict-churn-sub" style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem">3,847 fans in high-risk zone (&gt;70%). Intervention targeting top 500 highest-LTV at-risk fans.</div></div>
   </div>
+  <!-- at-risk games table -->
+  <div class="card mb">
+    <div class="card-header">
+      <div class="card-title">⚠️ At-Risk Games — Fill Rate Below Threshold</div>
+      <span style="font-size:0.74rem;color:var(--muted)" id="atrisk-summary">Scanning predictions…</span>
+    </div>
+    <table class="ftable" id="atrisk-table">
+      <thead><tr><th>Team</th><th>Opponent</th><th>Date</th><th>Predicted</th><th>Actual</th><th>Fill Rate</th><th>Risk</th><th>Action</th></tr></thead>
+      <tbody id="atrisk-tbody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:1.5rem">Loading model predictions…</td></tr></tbody>
+    </table>
+  </div>
+
   <div class="card">
     <div class="card-header"><div class="card-title">Industry Benchmarks <span class="rb" id="predict-benchmark-badge">2024 NFL</span></div></div>
     <canvas id="benchmarkChart" height="120"></canvas>
@@ -887,6 +947,15 @@
       <tbody id="model-fwd-body"></tbody>
     </table>
     <p style="font-size:0.74rem;color:var(--muted);margin-top:0.75rem">ℹ️ Negative R² with low MAPE is expected for near-capacity NFL venues (~98% fill, tiny variance). MAPE is the operationally meaningful metric. MLB shows higher R² because attendance genuinely varies game-to-game.</p>
+  </div>
+
+  <!-- league fill-rate benchmarking -->
+  <div class="card mb">
+    <div class="card-header">
+      <div class="card-title">League Fill-Rate Benchmarking <span class="rb">All Teams</span></div>
+      <span style="font-size:0.74rem;color:var(--muted)">Avg fill rate by team · active team highlighted</span>
+    </div>
+    <div style="position:relative;height:280px;"><canvas id="leagueBenchmarkChart"></canvas></div>
   </div>
 
   <!-- multi-season trend analysis -->

@@ -181,8 +181,11 @@ function showPage(id, el) {
   if (el) el.classList.add('active');
   chartsInit = false;
   setTimeout(initCharts, 60);
-  if (id === 'gameday') { buildEntryFeed(); buildFriendShareTable(); loadPricingData(); }
-  if (id === 'social')  { buildSocialHub(); }
+  if (id === 'gameday')  { buildEntryFeed(); buildFriendShareTable(); loadPricingData(); }
+  if (id === 'social')   { buildSocialHub(); }
+  if (id === 'profiles') { renderRetentionFunnel(); renderSegmentPieChart(); }
+  if (id === 'ltv')      { setTimeout(runSimulator, 50); }
+  if (id === 'predict')  { renderAtRiskTable(0.88); }
 }
 
 function updateTeam(val) {
@@ -976,6 +979,10 @@ function boot() {
     initCharts();
   });
 
+  // Pre-render tabs that don't need model data
+  renderRetentionFunnel();
+  setTimeout(runSimulator, 100);
+
   loadModelData(function(ok) {
     if (ok) {
       renderModelTab();
@@ -983,6 +990,7 @@ function boot() {
       var td = teamData();
       if (td) refreshPredictionsTab(td, TEAM_CONFIG[ACTIVE_TEAM] || TEAM_CONFIG['sf49ers']);
       scanThresholdAlerts();
+      renderAtRiskTable(0.88);
     }
     setTimeout(runPredictor, 500);
   });
@@ -1333,8 +1341,9 @@ function renderModelTab() {
     }).join('');
   }
 
-  // render multi-season chart at end
+  // render multi-season and benchmarking charts
   renderMultiSeasonChart();
+  renderLeagueBenchmark();
 }
 
 // ── Multi-Season Trend Analysis ───────────────────────────────────────────────
@@ -1816,6 +1825,229 @@ function runPredictor() {
 }
 
 boot();
+
+// ════════════════════════════════════════════════════════════════════════════
+// REVENUE IMPACT SIMULATOR (LTV tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+var SIM_LTV = { platinum: 14280, gold: 6840, silver: 2910, bronze: 820 };
+
+function runSimulator() {
+  var seg     = (document.getElementById('sim-segment') || {}).value || 'platinum';
+  var atRisk  = parseInt((document.getElementById('sim-atrisk') || {}).value || 500);
+  var saveRt  = parseInt((document.getElementById('sim-save') || {}).value || 40) / 100;
+  var costK   = parseInt((document.getElementById('sim-cost') || {}).value || 75);
+
+  var ltv     = SIM_LTV[seg] || 6840;
+  var saved   = Math.round(atRisk * saveRt);
+  var recovered = saved * ltv;
+  var costDollars = costK * 1000;
+  var net     = recovered - costDollars;
+  var roi     = costDollars > 0 ? (recovered / costDollars) : 0;
+
+  var fmt = function(n) { return n >= 1000000 ? '$' + (n/1000000).toFixed(2) + 'M' : '$' + Math.round(n/1000) + 'K'; };
+
+  setEl('sim-out-saved',  saved.toLocaleString() + ' fans');
+  setEl('sim-out-ltv',    fmt(recovered));
+  setEl('sim-out-profit', net >= 0 ? fmt(net) : '-' + fmt(Math.abs(net)));
+  setEl('sim-out-roi',    roi.toFixed(1) + '×');
+
+  var profitEl = document.getElementById('sim-out-profit');
+  if (profitEl) profitEl.style.color = net >= 0 ? '#22D3EE' : '#F05555';
+
+  var roiEl = document.getElementById('sim-out-roi');
+  if (roiEl) roiEl.style.color = roi >= 10 ? '#10D9A0' : roi >= 3 ? '#F5A524' : '#F05555';
+
+  var verdictEl = document.getElementById('sim-verdict');
+  if (verdictEl) {
+    var msg = saved > 0
+      ? 'Saving <strong>' + saved.toLocaleString() + '</strong> ' + seg + '-tier fans at a ' + Math.round(saveRt*100) + '% save rate generates <strong>' + fmt(recovered) + '</strong> 3-year LTV vs. <strong>$' + costK + 'K</strong> campaign cost — a <strong style="color:' + (roi >= 5 ? '#10D9A0' : '#F5A524') + '">' + roi.toFixed(1) + '×</strong> return.'
+      : 'Adjust sliders to model your intervention.';
+    verdictEl.innerHTML = msg;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FAN RETENTION FUNNEL (Profiles tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderRetentionFunnel() {
+  var stages = [
+    { label: 'Total Fan Base',    n: 72438, pct: 100,  col: '#22D3EE' },
+    { label: 'Season Ticket Holders', n: 48200, pct: 66.6, col: '#22D3EE' },
+    { label: 'Active (last 30d)', n: 31840, pct: 44.0, col: '#10D9A0' },
+    { label: 'Engaged (3+ interactions)', n: 18620, pct: 25.7, col: '#F5A524' },
+    { label: 'Loyalty Members',   n: 9440,  pct: 13.0, col: '#A78BFA' },
+    { label: 'Brand Ambassadors', n: 3620,  pct: 5.0,  col: '#F05555' },
+  ];
+  var el = document.getElementById('retention-funnel');
+  if (!el) return;
+  var maxW = 100;
+  el.innerHTML = stages.map(function(s, i) {
+    var w = maxW - i * (maxW / stages.length * 0.6);
+    var retPct = i > 0 ? (s.n / stages[i-1].n * 100).toFixed(0) : '';
+    return '<div style="margin-bottom:6px">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
+      + '<div style="font-size:11px;color:var(--muted-hi);min-width:190px;font-weight:500">' + s.label + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:' + s.col + ';min-width:55px;font-family:\'DM Mono\',monospace">' + s.n.toLocaleString() + '</div>'
+      + (retPct ? '<div style="font-size:10px;color:var(--muted);font-family:\'DM Mono\',monospace">' + retPct + '% retained</div>' : '')
+      + '</div>'
+      + '<div style="height:28px;background:var(--surface3);border-radius:5px;overflow:hidden">'
+      + '<div style="height:100%;width:' + s.pct + '%;background:' + s.col + ';opacity:0.25;border-radius:5px;transition:width 0.6s ease;position:relative">'
+      + '<div style="position:absolute;inset:0;display:flex;align-items:center;padding-left:8px;font-size:10px;color:' + s.col + ';font-family:\'DM Mono\',monospace;font-weight:700;opacity:4">' + s.pct.toFixed(1) + '%</div>'
+      + '</div></div></div>';
+  }).join('');
+}
+
+function renderSegmentPieChart() {
+  mk('segmentPieChart', {
+    type: 'doughnut',
+    data: {
+      labels: ['Platinum', 'Gold', 'Silver', 'Bronze / Casual'],
+      datasets: [{
+        data: [3620, 14488, 25354, 28976],
+        backgroundColor: ['rgba(245,165,36,0.8)','rgba(201,168,76,0.7)','rgba(156,163,175,0.6)','rgba(146,64,14,0.5)'],
+        borderColor:     ['#F5A524','#C9A84C','#9CA3AF','#92400E'],
+        borderWidth: 2, hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { position: 'right', labels: { color: MUTED, font: { size: 11 }, padding: 14 } },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + ctx.parsed.toLocaleString() + ' fans'; } } }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LEAGUE FILL-RATE BENCHMARKING (Model tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderLeagueBenchmark() {
+  if (!MODEL) return;
+  var sport = activeSport();
+  var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+  var preds = sportModel.predictions || [];
+  if (!preds.length) return;
+
+  // Compute avg fill rate per team from predictions
+  var teamCap = sportModel.team_capacities || {};
+  var teamMeans = sportModel.team_mean_attendance || {};
+  var byTeam = {};
+  preds.forEach(function(p) {
+    var cap = teamCap[p.team] || teamMeans[p.team] || 70000;
+    var fill = p.actual ? (p.actual / cap * 100) : null;
+    if (fill == null) return;
+    if (!byTeam[p.team]) byTeam[p.team] = { fills: [], name: p.team };
+    byTeam[p.team].fills.push(fill);
+  });
+  var teams = Object.keys(byTeam).sort();
+  var avgFills = teams.map(function(t) {
+    var f = byTeam[t].fills;
+    return Math.round(f.reduce(function(a,b){return a+b;},0)/f.length * 10) / 10;
+  });
+  // Sort by fill rate desc
+  var sorted = teams.map(function(t, i) { return { team: t, fill: avgFills[i] }; })
+    .sort(function(a,b){ return b.fill - a.fill; });
+
+  var labels = sorted.map(function(d) { return d.team; });
+  var fills  = sorted.map(function(d) { return d.fill; });
+  var colors = sorted.map(function(d) {
+    var isActive = d.team === ACTIVE_TEAM;
+    if (isActive) return '#22D3EE';
+    return d.fill >= 96 ? 'rgba(16,217,160,0.6)' : d.fill >= 88 ? 'rgba(16,217,160,0.35)' : d.fill >= 78 ? 'rgba(245,165,36,0.5)' : 'rgba(240,85,85,0.5)';
+  });
+
+  mk('leagueBenchmarkChart', {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Avg Fill Rate %',
+        data: fills,
+        backgroundColor: colors,
+        borderColor: colors.map(function(c, i) { return sorted[i].team === ACTIVE_TEAM ? '#22D3EE' : c; }),
+        borderWidth: sorted.map(function(d) { return d.team === ACTIVE_TEAM ? 2 : 1; }),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.x.toFixed(1) + '% avg fill' + (ctx.label === ACTIVE_TEAM ? ' ← YOU' : ''); } } }
+      },
+      scales: {
+        x: {
+          min: 60, max: 105,
+          ticks: { color: MUTED, font: { size: 10 }, callback: function(v) { return v + '%'; } },
+          grid: { color: GRID }
+        },
+        y: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// AT-RISK GAMES TABLE (Predictions tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderAtRiskTable(threshold) {
+  if (!MODEL) return;
+  threshold = threshold || 0.88;
+  var sport = activeSport();
+  var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+  var preds = sportModel.predictions || [];
+  var teamCap = sportModel.team_capacities || {};
+  var teamMeans = sportModel.team_mean_attendance || {};
+
+  var atRisk = preds.filter(function(p) {
+    var cap = teamCap[p.team] || teamMeans[p.team] || 70000;
+    var fill = p.actual ? (p.actual / cap) : (p.predicted / cap);
+    return fill < threshold;
+  }).sort(function(a, b) {
+    var capA = teamCap[a.team] || teamMeans[a.team] || 70000;
+    var capB = teamCap[b.team] || teamMeans[b.team] || 70000;
+    return (a.actual || a.predicted) / capA - (b.actual || b.predicted) / capB;
+  }).slice(0, 20);
+
+  var sumEl = document.getElementById('atrisk-summary');
+  if (sumEl) sumEl.textContent = atRisk.length + ' games below ' + Math.round(threshold*100) + '% fill (test set)';
+
+  var tbody = document.getElementById('atrisk-tbody');
+  if (!tbody) return;
+  if (!atRisk.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:1.5rem">No games below threshold in test set.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = atRisk.map(function(p) {
+    var cap = teamCap[p.team] || teamMeans[p.team] || 70000;
+    var fillAct  = p.actual  ? (p.actual  / cap * 100).toFixed(1) : null;
+    var fillPred = p.predicted ? (p.predicted / cap * 100).toFixed(1) : null;
+    var fill = fillAct || fillPred;
+    var fillNum = parseFloat(fill);
+    var riskCol = fillNum < 80 ? '#F05555' : fillNum < 88 ? '#F5A524' : '#10D9A0';
+    var riskBadge = fillNum < 80
+      ? '<span style="background:rgba(240,85,85,0.15);color:#F05555;padding:2px 7px;border-radius:4px;font-size:10px;font-family:\'DM Mono\',monospace">HIGH</span>'
+      : '<span style="background:rgba(245,165,36,0.15);color:#F5A524;padding:2px 7px;border-radius:4px;font-size:10px;font-family:\'DM Mono\',monospace">MED</span>';
+    var action = fillNum < 80 ? 'Flash Sale' : 'Ghost Outreach';
+    return '<tr>'
+      + '<td style="font-weight:600">' + p.team + '</td>'
+      + '<td>' + (p.opponent || '—') + '</td>'
+      + '<td style="font-family:\'DM Mono\',monospace;font-size:11px">' + (p.date || '—') + '</td>'
+      + '<td style="font-family:\'DM Mono\',monospace">' + Math.round(p.predicted).toLocaleString() + '</td>'
+      + '<td style="font-family:\'DM Mono\',monospace">' + (p.actual ? Math.round(p.actual).toLocaleString() : '—') + '</td>'
+      + '<td style="font-weight:700;color:' + riskCol + ';font-family:\'DM Mono\',monospace">' + fill + '%</td>'
+      + '<td>' + riskBadge + '</td>'
+      + '<td><button onclick="showPage(\'model\')" style="padding:3px 8px;font-size:10px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--muted-hi);cursor:pointer">' + action + '</button></td>'
+      + '</tr>';
+  }).join('');
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // PREDICTIONS TAB — dynamic per team/sport

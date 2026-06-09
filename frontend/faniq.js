@@ -2925,3 +2925,89 @@ refreshRealDataPanels = function() {
   var histEl = document.getElementById('real-history');
   if (histEl) histEl.innerHTML = '';
 };
+
+// ════════════════════════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS (demo navigation)
+// ════════════════════════════════════════════════════════════════════════════
+
+(function initKeyboardShortcuts() {
+  var NAV_KEYS = {
+    '1': 'overview', '2': 'realdata', '3': 'profiles', '4': 'ghost',
+    '5': 'gameday',  '6': 'ltv',      '7': 'predict',  '8': 'model',
+    '9': 'social'
+  };
+
+  document.addEventListener('keydown', function(e) {
+    // Don't intercept when typing in inputs
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    var pageId = NAV_KEYS[e.key];
+    if (pageId) {
+      var tabs = document.querySelectorAll('.nav-tab');
+      var idx = parseInt(e.key) - 1;
+      var tab = tabs[idx];
+      showPage(pageId, tab || null);
+      if (tab) {
+        tabs.forEach(function(t){ t.classList.remove('active'); });
+        tab.classList.add('active');
+      }
+      return;
+    }
+
+    // 'g' → open Game Day in new tab for active team
+    if (e.key === 'g' || e.key === 'G') {
+      window.open('/gameday.html?team=' + ACTIVE_TEAM, '_blank');
+    }
+  });
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// GHOST TABLE SEARCH + FILTER
+// ════════════════════════════════════════════════════════════════════════════
+
+var _ghostFilterMode = 'all';
+
+function setGhostFilter(mode) {
+  _ghostFilterMode = mode;
+  // Update button styles
+  ['all','high','med','low'].forEach(function(m) {
+    var btn = document.getElementById('gf-' + m);
+    if (!btn) return;
+    btn.style.background = m === mode ? 'var(--surface2)' : 'var(--surface3)';
+    btn.style.borderColor = m === mode ? 'var(--border-hi)' : 'var(--border)';
+    btn.style.fontWeight  = m === mode ? '700' : '400';
+  });
+  filterGhostTable();
+}
+
+function filterGhostTable() {
+  var tbody = document.getElementById('ghostTableBody');
+  if (!tbody) return;
+  var query = ((document.getElementById('ghost-search') || {}).value || '').toLowerCase().trim();
+  var rows   = Array.from(tbody.querySelectorAll('tr'));
+  var shown  = 0;
+
+  rows.forEach(function(row) {
+    var text  = row.textContent.toLowerCase();
+    var matchSearch = !query || text.indexOf(query) >= 0;
+
+    var matchFilter = true;
+    if (_ghostFilterMode !== 'all') {
+      // Look for risk badge text in the row
+      var badges = row.querySelectorAll('span');
+      var riskText = '';
+      badges.forEach(function(b) { if (b.textContent === 'HIGH' || b.textContent === 'MED' || b.textContent === 'LOW') riskText = b.textContent; });
+      if (_ghostFilterMode === 'high') matchFilter = riskText === 'HIGH';
+      if (_ghostFilterMode === 'med')  matchFilter = riskText === 'MED';
+      if (_ghostFilterMode === 'low')  matchFilter = riskText === 'LOW';
+    }
+
+    var visible = matchSearch && matchFilter;
+    row.style.display = visible ? '' : 'none';
+    if (visible) shown++;
+  });
+
+  var countEl = document.getElementById('ghost-filter-count');
+  if (countEl) countEl.textContent = shown + ' of ' + rows.length + ' shown';
+}

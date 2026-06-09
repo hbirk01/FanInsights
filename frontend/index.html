@@ -247,15 +247,15 @@
     <div><span class="logo">FanInsights</span><span class="logo-sub">Fan Intelligence Platform</span></div>
   </div>
   <div class="nav-tabs">
-    <div class="nav-tab active" onclick="showPage('overview',this)">Overview</div>
-    <div class="nav-tab" onclick="showPage('realdata',this)">Live Data</div>
-    <div class="nav-tab" onclick="showPage('profiles',this)">Fan Profiles</div>
-    <div class="nav-tab" onclick="showPage('ghost',this)">Ghost Tickets</div>
-    <div class="nav-tab" onclick="showPage('gameday',this)">Game Day AI</div>
-    <div class="nav-tab" onclick="showPage('ltv',this)">Lifetime Value</div>
-    <div class="nav-tab" onclick="showPage('predict',this)">Predictions</div>
-    <div class="nav-tab" onclick="showPage('model',this)">Model</div>
-    <div class="nav-tab" onclick="showPage('social',this)">Social Hub</div>
+    <div class="nav-tab active" onclick="showPage('overview',this)" title="1">Overview</div>
+    <div class="nav-tab" onclick="showPage('realdata',this)" title="2">Live Data</div>
+    <div class="nav-tab" onclick="showPage('profiles',this)" title="3">Fan Profiles</div>
+    <div class="nav-tab" onclick="showPage('ghost',this)" title="4">Ghost Tickets</div>
+    <div class="nav-tab" onclick="showPage('gameday',this)" title="5">Game Day AI</div>
+    <div class="nav-tab" onclick="showPage('ltv',this)" title="6">Lifetime Value</div>
+    <div class="nav-tab" onclick="showPage('predict',this)" title="7">Predictions</div>
+    <div class="nav-tab" onclick="showPage('model',this)" title="8">Model</div>
+    <div class="nav-tab" onclick="showPage('social',this)" title="9">Social Hub</div>
   </div>
   <div class="nav-right">
     <select class="team-selector" onchange="updateTeam(this.value)">
@@ -602,6 +602,15 @@
 
   <div class="card">
     <div class="card-header"><div class="card-title">Season Holder Ghost Risk — Weather-Adjusted <span class="rb">ESPN + Open-Meteo</span></div><button onclick="downloadGhostCSV()" style="padding:5px 12px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface3);border:1px solid var(--border-hi);border-radius:6px;color:var(--muted-hi);cursor:pointer">⬇ CSV</button></div>
+    <!-- Filter bar -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:0.8rem">
+      <input type="text" id="ghost-search" placeholder="Search fan or section…" oninput="filterGhostTable()" style="flex:1;min-width:160px;max-width:260px;padding:6px 10px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'DM Sans',sans-serif">
+      <button onclick="setGhostFilter('all')" id="gf-all" class="gf-btn gf-active" style="padding:4px 12px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--muted-hi);cursor:pointer">ALL</button>
+      <button onclick="setGhostFilter('high')" id="gf-high" class="gf-btn" style="padding:4px 12px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--red);cursor:pointer">HIGH</button>
+      <button onclick="setGhostFilter('med')" id="gf-med" class="gf-btn" style="padding:4px 12px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--amber);cursor:pointer">MED</button>
+      <button onclick="setGhostFilter('low')" id="gf-low" class="gf-btn" style="padding:4px 12px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--green);cursor:pointer">LOW</button>
+      <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-left:4px" id="ghost-filter-count"></span>
+    </div>
     <table class="ftable"><thead><tr><th>#</th><th>Fan / Season Holder</th><th>Section</th><th>Ghost Risk</th><th>Tier</th><th>Last Signal</th><th>Recommended Action</th><th></th></tr></thead><tbody id="ghostTableBody"></tbody></table>
   </div>
 </div>

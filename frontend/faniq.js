@@ -493,13 +493,20 @@ function initCharts() {
       return 'rgba(34,211,238,0.8)';
     });
 
+    // Rolling 5-game average
+    var rolling5 = attVals.map(function(_, i) {
+      var window = attVals.slice(Math.max(0, i - 4), i + 1);
+      return Math.round(window.reduce(function(a,b){return a+b;},0) / window.length);
+    });
+
     mk('attendanceChart', {
       type: 'bar',
       data: {
         labels: labels,
         datasets: [
-          { label:'Attendance', data:attVals, backgroundColor:colors, order:2 },
-          { label:'Capacity',   data:capLine, borderColor:'rgba(255,255,255,0.2)', borderDash:[4,4], type:'line', pointRadius:0, borderWidth:1, order:1 },
+          { label:'Attendance', data:attVals, backgroundColor:colors, order:3 },
+          { label:'5-Game Avg', data:rolling5, type:'line', borderColor:'rgba(245,165,36,0.85)', backgroundColor:'transparent', borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:0.35, order:1 },
+          { label:'Capacity',   data:capLine, borderColor:'rgba(255,255,255,0.2)', borderDash:[4,4], type:'line', pointRadius:0, borderWidth:1, order:2 },
         ]
       },
       options: {
@@ -1262,6 +1269,82 @@ function renderModelTab() {
 }
 
 // ── team-specific model insights from real game data ──────────────────────────
+// ── CSV Export ────────────────────────────────────────────────────────────────
+function downloadCSV(rows, filename) {
+  if (!rows || !rows.length) return;
+  var cols = Object.keys(rows[0]);
+  var csv  = [cols.join(',')].concat(rows.map(function(r) {
+    return cols.map(function(c) {
+      var v = r[c] == null ? '' : String(r[c]);
+      return v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0
+        ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }).join(',');
+  })).join('\n');
+  var blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+function downloadAttendanceCSV() {
+  var td = teamData();
+  if (!td) return;
+  var rows = (td.games || []).filter(function(g){ return g.is_home && g.attendance; }).map(function(g) {
+    return {
+      team: ACTIVE_TEAM, date: g.date, season: g.season,
+      opponent: g.opponent, won: g.won ? 'W' : 'L',
+      score: (g.our_score || '—') + '-' + (g.opp_score || '—'),
+      attendance: g.attendance, capacity: g.capacity,
+      fill_pct: g.fill_pct ? g.fill_pct.toFixed(1) : '',
+      ghost_risk: g.ghost_risk ? (g.ghost_risk * 100).toFixed(1) + '%' : '',
+      weather_severity: g.weather_severity || 0,
+      is_prime_time: g.is_prime_time ? 1 : 0,
+      is_divisional: g.is_divisional ? 1 : 0,
+      week: g.week_of_season || ''
+    };
+  });
+  downloadCSV(rows, ACTIVE_TEAM + '_attendance.csv');
+}
+
+function downloadGhostCSV() {
+  var tbody = document.getElementById('ghostTableBody');
+  if (!tbody) return;
+  var rows = [];
+  tbody.querySelectorAll('tr').forEach(function(tr) {
+    var cells = tr.querySelectorAll('td');
+    if (cells.length >= 5) {
+      rows.push({
+        fan_game:  cells[0] ? cells[0].textContent.trim() : '',
+        section:   cells[1] ? cells[1].textContent.trim() : '',
+        ghost_rate:cells[2] ? cells[2].textContent.trim() : '',
+        next_prob: cells[3] ? cells[3].textContent.trim() : '',
+        last_signal:cells[4]? cells[4].textContent.trim() : '',
+        action:    cells[5] ? cells[5].textContent.trim() : ''
+      });
+    }
+  });
+  downloadCSV(rows, ACTIVE_TEAM + '_ghost_risk.csv');
+}
+
+function downloadPredictionsCSV() {
+  if (!MODEL) return;
+  var sport = activeSport();
+  var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+  var preds = (sportModel.predictions || []).filter(function(p){ return p.actual && p.predicted; });
+  var rows = preds.map(function(p) {
+    return {
+      team: p.team, date: p.date, season: p.season,
+      opponent: p.opponent, won: p.won ? 'W' : 'L',
+      actual: p.actual, predicted: p.predicted,
+      residual: p.residual,
+      error_pct: p.actual ? (Math.abs(p.residual) / p.actual * 100).toFixed(2) + '%' : '',
+      split: p.split
+    };
+  });
+  downloadCSV(rows, sport + '_model_predictions.csv');
+}
+
 // ── shared stat helpers (used in renderModelTab + initCharts) ─────────────────
 function pearsonR(xs, ys) {
   var n = xs.length;
@@ -1640,6 +1723,52 @@ function hexToRgb(hex) {
   var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return r + ',' + g + ',' + b;
 }
+
+// ── Email Preview Modal ───────────────────────────────────────────────────────
+var _emailModalStep = 'offer';
+function previewEmail(step) {
+  _emailModalStep = step || 'offer';
+  var fan = DEMO_FAN_KEY || 'marcus';
+  var modal = document.getElementById('email-modal');
+  var iframe = document.getElementById('email-iframe');
+  var title = document.getElementById('email-modal-title');
+  if (!modal || !iframe) return;
+
+  // Update title
+  var stepLabels = { offer:'Geo-Trigger Offer Email', checkin:'Stadium Check-In Email', social:'Post-Game Social Email' };
+  var fanLabels  = { marcus:'Marcus (Upsell)', priya:'Priya (Win-Back)', david:'David (Retention)', lisa:'Lisa (Re-acquisition)' };
+  if (title) title.textContent = (fanLabels[fan] || fan) + ' · ' + (stepLabels[step] || step);
+
+  // Highlight active step button
+  ['offer','checkin','social'].forEach(function(s) {
+    var b = document.getElementById('epbtn-' + s);
+    if (!b) return;
+    b.style.background = s === step ? 'rgba(34,211,238,0.15)' : 'var(--surface2)';
+    b.style.color = s === step ? 'var(--cyan)' : 'var(--muted-hi)';
+    b.style.borderColor = s === step ? 'rgba(34,211,238,0.4)' : 'var(--border-hi)';
+  });
+
+  // Load HTML into iframe
+  iframe.src = API_BASE + '/api/email/preview/' + fan + '/' + step;
+
+  // Show modal
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEmailModal() {
+  var modal = document.getElementById('email-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Close on backdrop click
+document.addEventListener('DOMContentLoaded', function() {
+  var modal = document.getElementById('email-modal');
+  if (modal) modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeEmailModal();
+  });
+});
 
 function runDemoStep(step) {
   var endpoints = { 1: '/api/demo/run', 2: '/api/demo/checkin', 3: '/api/demo/social' };

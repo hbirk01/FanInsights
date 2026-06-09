@@ -498,6 +498,90 @@ def demo_social(fan: str = Query("marcus", description="Fan profile key: marcus|
     return step3_social(fan_key=fan)
 
 
+@app.get("/api/email/preview/{fan}/{step}", summary="Render email template as HTML (no send)")
+def email_preview(fan: str, step: str):
+    """
+    Returns the rendered HTML for any fan+step combination without sending it.
+    fan:  marcus | priya | david | lisa
+    step: offer | checkin | social
+    """
+    from demo_runner import FAN_PROFILES, _render, get_real_game_stats, get_live_weather, \
+        calc_discount, get_action_copy, _short_id
+    from fastapi.responses import HTMLResponse
+
+    fan_key = fan if fan in FAN_PROFILES else "marcus"
+    step_key = step if step in ("offer", "checkin", "social") else "offer"
+
+    template_map = {"offer": "email_offer.html", "checkin": "email_checkin.html", "social": "email_social.html"}
+    tmpl_name = template_map[step_key]
+
+    fan_profile = FAN_PROFILES[fan_key]
+    stats = get_real_game_stats("sf49ers")
+    wx    = get_live_weather()
+
+    base_disc, sale, orig = calc_discount(stats["avg_ghost_risk"])
+    action = fan_profile.get("action", "retention")
+    disc_overrides = {"upsell": base_disc, "retention": base_disc,
+                      "winback": min(base_disc + 10, 30), "reacquisition": min(base_disc + 15, 35)}
+    disc = disc_overrides[action]
+    sale = round(orig * (1 - disc / 100))
+    seat_count    = fan_profile["seat_count"]
+    savings       = (orig - sale) * seat_count
+    food_included = action == "reacquisition"
+    total_cost    = sale * seat_count + (0 if food_included else fan_profile["food_total"]) + 45
+    friend_names  = " and ".join(f["name"] for f in fan_profile["friends"]) if fan_profile.get("friends") else "some friends"
+    copy          = get_action_copy(fan_profile, disc, sale, orig)
+
+    ctx = {
+        "fan_name": fan_profile["name"], "section": fan_profile["section"],
+        "row": fan_profile["row"], "seat_count": seat_count,
+        "party_desc": fan_profile["party_desc"], "preferred_zone": fan_profile["preferred_zone"],
+        "fan_ltv": f"{fan_profile['ltv']:,}", "loyalty_score": fan_profile["loyalty"],
+        "loyalty_pct": "8" if fan_profile["loyalty"] > 70 else "25",
+        "attend_games": fan_profile["attend_games"],
+        "hero_title": copy["hero_title"], "hero_sub": copy["hero_sub"],
+        "offer_label": copy["offer_label"], "cta_text": copy["cta_text"],
+        "special_offer": copy["special_offer"], "urgency_note": copy["urgency_note"],
+        "discount_note": copy["discount_note"],
+        "orig_price": orig, "sale_price": sale, "discount_pct": disc,
+        "savings": savings, "total_cost": total_cost,
+        "food_order": fan_profile["food_order"],
+        "food_total": 0 if food_included else fan_profile["food_total"],
+        "food_included": "Included free" if food_included else f"${fan_profile['food_total']}",
+        "uber_est": fan_profile["uber_est"], "jersey_price": fan_profile["jersey_price"],
+        "offer_id": _short_id(), "share_id": _short_id(),
+        "opponent": stats["opponent"], "game_date": stats["next_game_date"],
+        "kickoff_time": "5:20 PM", "seats_remaining": f"{stats['seats_remaining']:,}",
+        "ghost_risk_pct": stats["ghost_risk_pct"],
+        "temp_f": wx["temp_f"], "wind_mph": wx["wind_mph"],
+        "weather_icon": wx["weather_icon"], "precip_icon": wx["precip_icon"],
+        "precip_label": wx["precip_label"], "weather_class": wx["weather_class"],
+        "precip_class": wx["precip_class"],
+        "distance": "3.2 miles", "gate": fan_profile.get("gate","A"),
+        "upgrade_section": fan_profile.get("upgrade_section","Sec 108"),
+        "upgrade_price": fan_profile.get("upgrade_price", 12),
+        "friend_count": len(fan_profile.get("friends",[])),
+        "friend_names": friend_names,
+        "loyalty_games_needed": max(0, 10 - fan_profile["attend_games"]),
+        "next_tier": fan_profile.get("next_tier","Gold"),
+        "tier": fan_profile.get("tier","Silver"),
+        "points": fan_profile["loyalty"] * 100,
+        "points_needed": max(0, 10000 - fan_profile["loyalty"] * 100),
+        "final_score": stats.get("last_score","24-17"), "mvp_player": "C. McCaffrey",
+        "highlight_url": "#", "social_bonus_pct": 20,
+        "total_spend_season": f"{fan_profile['ltv']//2:,}",
+        "games_this_season": fan_profile["attend_games"],
+        "ltv_rank_pct": "top 12" if fan_profile["loyalty"] > 70 else "top 30",
+    }
+
+    try:
+        html = _render(tmpl_name, ctx)
+    except Exception as e:
+        html = f"<p style='font-family:sans-serif;padding:2rem;color:red'>Template render error: {e}</p>"
+
+    return HTMLResponse(content=html)
+
+
 @app.get("/api/demo/fans", summary="Available demo fan profiles")
 def demo_fans():
     """Return the 4 fan profiles and their engagement strategies."""

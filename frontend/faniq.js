@@ -184,7 +184,7 @@ function showPage(id, el) {
   if (id === 'gameday')  { buildEntryFeed(); buildFriendShareTable(); loadPricingData(); }
   if (id === 'social')   { buildSocialHub(); }
   if (id === 'profiles') { renderRetentionFunnel(); renderSegmentPieChart(); }
-  if (id === 'ltv')      { setTimeout(runSimulator, 50); setTimeout(renderRevForecastChart, 80); }
+  if (id === 'ltv')      { setTimeout(runSimulator, 50); setTimeout(renderRevForecastChart, 80); setTimeout(renderLtvTierChart, 80); }
   if (id === 'predict')  { renderAtRiskTable(0.88); renderScheduleCalendar(); }
   if (id === 'realdata') { renderGhostTrendChart(); }
 }
@@ -1779,6 +1779,14 @@ function runPredictor() {
   if (oppPct < 0.4)       ghost += 0.05; // weak matchup, less excitement
   ghost = Math.round(Math.min(ghost, 0.55) * 100);
 
+  // Win probability (logistic-style estimate)
+  var homeAdv = 0.56;  // baseline home win advantage
+  var winProb = homeAdv + (0.5 - oppPct) * 0.35 + (streak > 0 ? Math.min(streak * 0.02, 0.08) : Math.max(streak * 0.02, -0.10));
+  winProb = Math.round(Math.min(0.82, Math.max(0.18, winProb)) * 100);
+  setEl('pred-out-winprob', winProb + '%');
+  var wpEl = document.getElementById('pred-out-winprob');
+  if (wpEl) wpEl.style.color = winProb >= 60 ? '#10D9A0' : winProb >= 45 ? '#F5A524' : '#F05555';
+
   // H2H historical record
   renderH2HRecord(teamKey, oppKey);
 
@@ -2055,6 +2063,47 @@ function renderAtRiskTable(threshold) {
       + '<td><button onclick="showPage(\'model\')" style="padding:3px 8px;font-size:10px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--muted-hi);cursor:pointer">' + action + '</button></td>'
       + '</tr>';
   }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LTV TIER BREAKDOWN CHART (LTV tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderLtvTierChart() {
+  var categories = ['Season Tickets', 'Food & Bev', 'Merchandise', 'Premium Upgrades', 'Digital', 'Referral Value'];
+  var tiers = {
+    Platinum: [5200, 2100, 1480, 1800, 420, 3280],
+    Gold:     [2800, 980,  640,  640,  180, 1600],
+    Silver:   [1200, 520,  280,  240,  80,  590],
+    Bronze:   [0,    240,  180,  0,    60,  340]
+  };
+  var colors = ['rgba(245,165,36,0.75)', 'rgba(201,168,76,0.65)', 'rgba(156,163,175,0.55)', 'rgba(146,64,14,0.55)'];
+  mk('ltvTierChart', {
+    type: 'bar',
+    data: {
+      labels: categories,
+      datasets: Object.keys(tiers).map(function(tier, i) {
+        return {
+          label: tier,
+          data: tiers[tier],
+          backgroundColor: colors[i],
+          borderColor: colors[i].replace('0.', '1.').replace(',0.',',.9,'),
+          borderWidth: 1, borderRadius: 3
+        };
+      })
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: MUTED, font: { size: 11 } } },
+        tooltip: { callbacks: { label: function(ctx){ return ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString(); } } }
+      },
+      scales: {
+        x: { ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID } },
+        y: { beginAtZero: true, ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return '$' + (v/1000).toFixed(0) + 'K'; } }, grid: { color: GRID } }
+      }
+    }
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════

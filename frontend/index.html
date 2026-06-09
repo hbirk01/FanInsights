@@ -769,6 +769,10 @@
     <div class="card"><div class="card-header"><div class="card-title">LTV Waterfall — Revenue Components</div></div><canvas id="ltvWaterfallChart" height="220"></canvas></div>
     <div class="card"><div class="card-header"><div class="card-title">Segment Migration (YoY)</div></div><canvas id="migrationChart" height="220"></canvas></div>
   </div>
+  <div class="card mb">
+    <div class="card-header"><div class="card-title">Revenue Breakdown by Segment &amp; Category <span class="rb">3-Year LTV</span></div><span style="font-size:0.74rem;color:var(--muted)">Grouped bars per tier · hover to compare</span></div>
+    <div style="position:relative;height:260px;"><canvas id="ltvTierChart"></canvas></div>
+  </div>
   <div class="g3">
     <div class="card"><div class="card-header"><div class="card-title">LTV Drivers — Platinum</div></div>
       <table class="st"><tr><td>Season tickets</td><td style="text-align:right;font-weight:600">$5,200</td></tr><tr><td>Food & beverage</td><td style="text-align:right;font-weight:600">$2,100</td></tr><tr><td>Merchandise</td><td style="text-align:right;font-weight:600">$1,480</td></tr><tr><td>Premium upgrades</td><td style="text-align:right;font-weight:600">$1,800</td></tr><tr><td>Digital / streaming</td><td style="text-align:right;font-weight:600">$420</td></tr><tr><td>Referral value</td><td style="text-align:right;font-weight:600;color:var(--green)">$3,280</td></tr><tr><td style="font-weight:700">3-Year Total</td><td style="text-align:right;font-weight:700;color:var(--gold)">$14,280</td></tr></table>
@@ -1156,10 +1160,11 @@
     <!-- Result card -->
     <div id="pred-result" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
       <!-- Key stats row -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.2rem">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.2rem">
         <div><div class="stat-label" style="font-size:0.7rem">Predicted Attendance</div><div style="font-size:1.6rem;font-weight:800;color:var(--cyan)" id="pred-out-att">—</div></div>
         <div><div class="stat-label" style="font-size:0.7rem">Fill Rate</div><div style="font-size:1.6rem;font-weight:800" id="pred-out-fill" style="color:var(--green)">—</div></div>
         <div><div class="stat-label" style="font-size:0.7rem">Ghost Risk</div><div style="font-size:1.6rem;font-weight:800;color:var(--amber)" id="pred-out-ghost">—</div></div>
+        <div><div class="stat-label" style="font-size:0.7rem">Home Win Prob</div><div style="font-size:1.6rem;font-weight:800;color:var(--purple)" id="pred-out-winprob">—</div></div>
       </div>
       <!-- CI bar -->
       <div style="margin-bottom:1.2rem">

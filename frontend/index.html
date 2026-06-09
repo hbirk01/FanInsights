@@ -583,6 +583,23 @@
       </div>
     </div>
   </div>
+  <!-- Campaign Performance Tracker -->
+  <div class="card mb">
+    <div class="card-header"><div class="card-title">📬 Campaign Performance Tracker</div><span style="font-size:0.74rem;color:var(--muted)">Per-campaign metrics · season to date</span></div>
+    <table class="ftable">
+      <thead><tr><th>Campaign</th><th>Segment</th><th>Sent</th><th>Open Rate</th><th>CTR</th><th>Conversions</th><th>Revenue</th><th>ROI</th></tr></thead>
+      <tbody>
+        <tr><td>72h Ghost Alert</td><td><span class="tier t-plat">All Tiers</span></td><td>8,420</td><td style="color:var(--green);font-weight:600">61.3%</td><td>24.1%</td><td style="font-weight:700">2,031</td><td style="color:var(--gold);font-weight:600">$91K</td><td style="color:var(--green);font-weight:700">12.1×</td></tr>
+        <tr><td>Seat Credit Offer</td><td><span class="tier t-gold">Platinum</span></td><td>1,840</td><td style="color:var(--green);font-weight:600">74.2%</td><td>38.4%</td><td style="font-weight:700">707</td><td style="color:var(--gold);font-weight:600">$84K</td><td style="color:var(--green);font-weight:700">28.0×</td></tr>
+        <tr><td>Flash Sale — Waitlist</td><td><span class="tier tb">Waitlist</span></td><td>2,800</td><td style="color:var(--blue);font-weight:600">48.2%</td><td>19.7%</td><td style="font-weight:700">552</td><td style="color:var(--gold);font-weight:600">$42K</td><td style="color:var(--green);font-weight:700">14.0×</td></tr>
+        <tr><td>Win-Back Re-engagement</td><td><span class="tier t-red">At-Risk</span></td><td>3,847</td><td style="color:var(--blue);font-weight:600">41.8%</td><td>15.3%</td><td style="font-weight:700">589</td><td style="color:var(--gold);font-weight:600">$58K</td><td style="color:var(--green);font-weight:700">9.7×</td></tr>
+        <tr><td>Upgrade Upsell</td><td><span class="tier t-plat">Platinum</span></td><td>3,620</td><td style="color:var(--amber);font-weight:600">37.4%</td><td>11.2%</td><td style="font-weight:700">406</td><td style="color:var(--gold);font-weight:600">$73K</td><td style="color:var(--green);font-weight:700">18.3×</td></tr>
+        <tr><td>Bronze Reacquisition</td><td><span class="tier tb">Bronze</span></td><td>14,488</td><td style="color:var(--amber);font-weight:600">22.1%</td><td>8.4%</td><td style="font-weight:700">1,217</td><td style="color:var(--gold);font-weight:600">$47K</td><td style="color:var(--amber);font-weight:700">4.7×</td></tr>
+      </tbody>
+    </table>
+    <div class="insight" style="margin-top:0.8rem"><div class="insight-label">Top Performer</div><div class="insight-text">Seat Credit Offer to Platinum fans drives <strong>28.0× ROI</strong> — highest in portfolio. Recommend scaling campaign to full Gold tier (14,488 fans) for est. additional <strong>$890K revenue</strong> this season.</div></div>
+  </div>
+
   <div class="card">
     <div class="card-header"><div class="card-title">Season Holder Ghost Risk — Weather-Adjusted <span class="rb">ESPN + Open-Meteo</span></div><button onclick="downloadGhostCSV()" style="padding:5px 12px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface3);border:1px solid var(--border-hi);border-radius:6px;color:var(--muted-hi);cursor:pointer">⬇ CSV</button></div>
     <table class="ftable"><thead><tr><th>#</th><th>Fan / Season Holder</th><th>Section</th><th>Ghost Risk</th><th>Tier</th><th>Last Signal</th><th>Recommended Action</th><th></th></tr></thead><tbody id="ghostTableBody"></tbody></table>
@@ -764,6 +781,20 @@
     <div class="card"><div class="card-header"><div class="card-title">Referral Network Value</div></div>
       <canvas id="referralChart" height="160"></canvas>
       <div style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem">Platinum fans refer avg 2.3 new fans/season. Each = $820+ LTV. Network effect +18% annually.</div>
+    </div>
+  </div>
+
+  <!-- ── Revenue Forecast Chart ────────────────────────────────────────────── -->
+  <div class="card mb" style="margin-top:1.5rem">
+    <div class="card-header">
+      <div class="card-title">📈 3-Season Revenue Forecast</div>
+      <span style="font-size:0.74rem;color:var(--muted)">Current trajectory vs. AI-optimized scenario · $M</span>
+    </div>
+    <div style="position:relative;height:220px;"><canvas id="revForecastChart"></canvas></div>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:0.8rem;font-size:0.78rem;color:var(--muted)">
+      <span><span style="display:inline-block;width:10px;height:2px;background:#F05555;margin-right:5px;vertical-align:middle"></span>Baseline (no AI intervention)</span>
+      <span><span style="display:inline-block;width:10px;height:2px;background:#10D9A0;margin-right:5px;vertical-align:middle"></span>AI-optimized (FanInsights)</span>
+      <span><span style="display:inline-block;width:10px;height:2px;background:rgba(34,211,238,0.4);margin-right:5px;vertical-align:middle"></span>Confidence band</span>
     </div>
   </div>
 

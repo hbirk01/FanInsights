@@ -184,7 +184,7 @@ function showPage(id, el) {
   if (id === 'gameday')  { buildEntryFeed(); buildFriendShareTable(); loadPricingData(); }
   if (id === 'social')   { buildSocialHub(); }
   if (id === 'profiles') { renderRetentionFunnel(); renderSegmentPieChart(); }
-  if (id === 'ltv')      { setTimeout(runSimulator, 50); }
+  if (id === 'ltv')      { setTimeout(runSimulator, 50); setTimeout(renderRevForecastChart, 80); }
   if (id === 'predict')  { renderAtRiskTable(0.88); renderScheduleCalendar(); }
   if (id === 'realdata') { renderGhostTrendChart(); }
 }
@@ -2055,6 +2055,79 @@ function renderAtRiskTable(threshold) {
       + '<td><button onclick="showPage(\'model\')" style="padding:3px 8px;font-size:10px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--muted-hi);cursor:pointer">' + action + '</button></td>'
       + '</tr>';
   }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// REVENUE FORECAST CHART (LTV tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderRevForecastChart() {
+  var td = teamData();
+  var base = td ? ((td.team_info || {}).avg_attendance || 67000) : 67000;
+
+  // Seasons: last 2 real + 3 projected
+  var seasons = ['2022', '2023', '2024', '2025F', '2026F', '2027F'];
+  var baseline = [base*0.91, base*0.95, base*1.0, base*0.98, base*0.96, base*0.94].map(function(v){ return Math.round(v/1e6*100)/100; });
+  var optimized = [base*0.91, base*0.95, base*1.0, base*1.04, base*1.09, base*1.15].map(function(v){ return Math.round(v/1e6*100)/100; });
+  var ciUpper = optimized.map(function(v, i) { return i < 3 ? null : Math.round((v*1.05)*100)/100; });
+  var ciLower = optimized.map(function(v, i) { return i < 3 ? null : Math.round((v*0.95)*100)/100; });
+
+  mk('revForecastChart', {
+    data: {
+      labels: seasons,
+      datasets: [
+        {
+          type: 'line', label: 'CI Upper',
+          data: ciUpper, borderColor: 'transparent',
+          backgroundColor: 'rgba(34,211,238,0.08)',
+          fill: '+1', pointRadius: 0, tension: 0.4, order: 3
+        },
+        {
+          type: 'line', label: 'CI Lower',
+          data: ciLower, borderColor: 'transparent',
+          backgroundColor: 'rgba(34,211,238,0.08)',
+          fill: false, pointRadius: 0, tension: 0.4, order: 3
+        },
+        {
+          type: 'line', label: 'Baseline',
+          data: baseline,
+          borderColor: 'rgba(240,85,85,0.7)', backgroundColor: 'transparent',
+          borderWidth: 2, borderDash: [5,5], pointRadius: 3,
+          pointBackgroundColor: 'rgba(240,85,85,0.7)', tension: 0.35, order: 1
+        },
+        {
+          type: 'line', label: 'AI-Optimized',
+          data: optimized,
+          borderColor: '#10D9A0', backgroundColor: 'transparent',
+          borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#10D9A0',
+          tension: 0.35, order: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: MUTED, font: { size: 11 }, filter: function(item) { return item.text !== 'CI Upper' && item.text !== 'CI Lower'; } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.dataset.label === 'CI Upper' || ctx.dataset.label === 'CI Lower') return null;
+              return ctx.dataset.label + ': $' + ctx.parsed.y + 'M';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: MUTED, font: { size: 11 } }, grid: { color: GRID } },
+        y: {
+          ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return '$' + v + 'M'; } },
+          grid: { color: GRID }
+        }
+      }
+    }
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════

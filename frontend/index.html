@@ -500,10 +500,16 @@
       <div style="font-size:0.77rem;color:var(--muted);margin-top:0.5rem">NLP keyword analysis of ESPN news headlines. Positive (win, champion, extend) vs. negative (injured, loss, suspend). Feeds into loyalty score model.</div>
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">F1 Race Calendar <span class="rb">ESPN</span></div><span style="font-size:0.74rem;color:var(--muted)">Race calendar</span></div>
-      <div id="real-f1"><div style="color:var(--muted)">Loading…</div></div>
-      <div class="insight" style="margin-top:1rem"><div class="insight-label">F1 Fan Intelligence</div><div class="insight-text">Same FanIQ model for F1: geo-triggered hospitality offers, paddock tour upsells, merchandise delivery to grandstand seats. Live data from ESPN F1 scoreboard API.</div></div>
+      <div class="card-header"><div class="card-title">Ghost Risk Trend — Game-by-Game <span class="rb">Model</span></div><span style="font-size:0.74rem;color:var(--muted)">Weather-adjusted ghost risk per home game</span></div>
+      <canvas id="ghostTrendChart" height="120"></canvas>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem">Higher ghost risk correlates with rain, cold, losing streaks, and weak opponents. The model predicts no-show probability 72h pre-game for targeted interventions.</div>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">F1 Race Calendar <span class="rb">ESPN</span></div><span style="font-size:0.74rem;color:var(--muted)">Race calendar</span></div>
+    <div id="real-f1"><div style="color:var(--muted)">Loading…</div></div>
+    <div class="insight" style="margin-top:1rem"><div class="insight-label">F1 Fan Intelligence</div><div class="insight-text">Same FanIQ model for F1: geo-triggered hospitality offers, paddock tour upsells, merchandise delivery to grandstand seats. Live data from ESPN F1 scoreboard API.</div></div>
   </div>
 
   <div class="card">
@@ -826,6 +832,21 @@
     </div>
     <div class="card"><div class="card-header"><div class="card-title">Churn Probability Distribution</div></div><canvas id="churnDistChart" height="220"></canvas><div id="predict-churn-sub" style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem">3,847 fans in high-risk zone (&gt;70%). Intervention targeting top 500 highest-LTV at-risk fans.</div></div>
   </div>
+  <!-- season schedule risk calendar -->
+  <div class="card mb">
+    <div class="card-header">
+      <div class="card-title">📅 Season Schedule Risk Calendar</div>
+      <span style="font-size:0.74rem;color:var(--muted)">Fill rate forecast per home game · hover for details</span>
+    </div>
+    <div id="schedule-calendar" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0"></div>
+    <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#22D3EE;margin-right:4px"></span>≥96% sellout</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#10D9A0;margin-right:4px"></span>88–95% solid</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#F5A524;margin-right:4px"></span>78–87% soft</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#F05555;margin-right:4px"></span>&lt;78% at risk</span>
+    </div>
+  </div>
+
   <!-- at-risk games table -->
   <div class="card mb">
     <div class="card-header">
@@ -1120,6 +1141,16 @@
           <div id="pred-ci-band" style="position:absolute;top:0;bottom:0;background:rgba(34,211,238,0.12);border-left:2px solid rgba(34,211,238,0.35);border-right:2px solid rgba(34,211,238,0.35)"></div>
           <div id="pred-ci-needle" style="position:absolute;top:0;bottom:0;width:3px;background:var(--cyan);border-radius:1px"></div>
           <div id="pred-ci-label" style="position:absolute;top:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:var(--cyan);font-family:'DM Mono',monospace;white-space:nowrap;pointer-events:none"></div>
+        </div>
+      </div>
+      <!-- H2H historical record -->
+      <div id="pred-h2h" style="display:none;padding:0.8rem;background:var(--surface3);border-radius:8px;border:1px solid var(--border);margin-bottom:1rem">
+        <div style="font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">ALL-TIME HEAD-TO-HEAD (model dataset)</div>
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">
+          <div><span style="font-size:1.1rem;font-weight:800;color:var(--green)" id="h2h-wins">—</span><span style="font-size:11px;color:var(--muted);margin-left:4px">HOME W</span></div>
+          <div><span style="font-size:1.1rem;font-weight:800;color:var(--red)" id="h2h-losses">—</span><span style="font-size:11px;color:var(--muted);margin-left:4px">HOME L</span></div>
+          <div><span style="font-size:1.1rem;font-weight:800;color:var(--amber)" id="h2h-avg-att">—</span><span style="font-size:11px;color:var(--muted);margin-left:4px">AVG ATTENDANCE</span></div>
+          <div id="h2h-last" style="font-size:11px;color:var(--muted)"></div>
         </div>
       </div>
       <!-- Top factors -->

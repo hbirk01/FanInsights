@@ -185,7 +185,8 @@ function showPage(id, el) {
   if (id === 'social')   { buildSocialHub(); }
   if (id === 'profiles') { renderRetentionFunnel(); renderSegmentPieChart(); }
   if (id === 'ltv')      { setTimeout(runSimulator, 50); }
-  if (id === 'predict')  { renderAtRiskTable(0.88); }
+  if (id === 'predict')  { renderAtRiskTable(0.88); renderScheduleCalendar(); }
+  if (id === 'realdata') { renderGhostTrendChart(); }
 }
 
 function updateTeam(val) {
@@ -199,8 +200,10 @@ function updateTeam(val) {
   if (gdBtn) gdBtn.href = '/gameday.html?team=' + val;
   refreshRealDataPanels();
   initCharts();
-  renderModelTab();   // re-render model tab for the active sport
+  renderModelTab();
   runPredictor();
+  renderScheduleCalendar();
+  renderGhostTrendChart();
 }
 
 // ── real data panel refresh ───────────────────────────────────────────────────
@@ -977,6 +980,7 @@ function boot() {
     }
     refreshRealDataPanels();
     initCharts();
+    renderGhostTrendChart();
   });
 
   // Pre-render tabs that don't need model data
@@ -991,6 +995,7 @@ function boot() {
       if (td) refreshPredictionsTab(td, TEAM_CONFIG[ACTIVE_TEAM] || TEAM_CONFIG['sf49ers']);
       scanThresholdAlerts();
       renderAtRiskTable(0.88);
+      renderScheduleCalendar();
     }
     setTimeout(runPredictor, 500);
   });
@@ -1774,6 +1779,9 @@ function runPredictor() {
   if (oppPct < 0.4)       ghost += 0.05; // weak matchup, less excitement
   ghost = Math.round(Math.min(ghost, 0.55) * 100);
 
+  // H2H historical record
+  renderH2HRecord(teamKey, oppKey);
+
   // Matchup sub-label
   var oppName = (document.getElementById('pred-opponent') || {}).options;
   var oppNameStr = oppName && oppName[oppName.selectedIndex] ? oppName[oppName.selectedIndex].text : oppKey;
@@ -2047,6 +2055,152 @@ function renderAtRiskTable(threshold) {
       + '<td><button onclick="showPage(\'model\')" style="padding:3px 8px;font-size:10px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--muted-hi);cursor:pointer">' + action + '</button></td>'
       + '</tr>';
   }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SEASON SCHEDULE RISK CALENDAR (Predictions tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderScheduleCalendar() {
+  var el = document.getElementById('schedule-calendar');
+  if (!el) return;
+  var td = teamData();
+  var games = td ? (td.games || []).filter(function(g){ return g.is_home; }) : [];
+  if (!games.length) {
+    // Fall back to model predictions for ACTIVE_TEAM
+    if (!MODEL) { el.innerHTML = '<div style="color:var(--muted);font-size:13px">Load team data to view schedule.</div>'; return; }
+    var sport = activeSport();
+    var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+    var preds = (sportModel.predictions || []).filter(function(p){ return p.team === ACTIVE_TEAM; });
+    if (!preds.length) preds = (sportModel.predictions || []).slice(0, 30);
+    // Derive synthetic games from predictions
+    games = preds.map(function(p) {
+      var cap = (sportModel.team_mean_attendance || {})[p.team] || 70000;
+      return {
+        date: p.date, opponent: p.opponent, won: p.won,
+        attendance: p.actual, predicted_fill: p.actual ? (p.actual / cap * 100) : (p.predicted / cap * 100),
+        fill_pct: p.actual ? (p.actual / cap * 100) : null
+      };
+    });
+  }
+
+  var fillColor = function(pct) {
+    if (pct == null) return '#1C2E4A';
+    if (pct >= 96) return '#22D3EE';
+    if (pct >= 88) return '#10D9A0';
+    if (pct >= 78) return '#F5A524';
+    return '#F05555';
+  };
+
+  el.innerHTML = games.map(function(g, i) {
+    var fill = g.fill_pct || g.predicted_fill || 0;
+    var col = fillColor(fill);
+    var dateStr = g.date ? g.date.slice(5) : 'G' + (i+1);
+    var opp = (g.opponent || 'TBD').replace(/^.* /, ''); // last word (city removed)
+    var tooltip = (g.opponent || '—') + ' · ' + (fill ? fill.toFixed(1) + '%' : '—');
+    var result = g.won === true ? 'W' : g.won === false ? 'L' : '';
+    return '<div title="' + tooltip + '" style="cursor:default;width:76px;padding:7px 8px;background:var(--surface2);border:1px solid ' + col + ';border-radius:8px;position:relative;overflow:hidden">'
+      + '<div style="position:absolute;inset:0;background:' + col + ';opacity:0.08"></div>'
+      + '<div style="position:relative">'
+      + '<div style="font-size:9px;font-family:\'DM Mono\',monospace;color:var(--muted);margin-bottom:2px">' + dateStr + '</div>'
+      + '<div style="font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + opp + '</div>'
+      + '<div style="font-size:11px;font-weight:700;color:' + col + ';font-family:\'DM Mono\',monospace;margin-top:2px">'
+      + (fill ? fill.toFixed(0) + '%' : '—')
+      + (result ? ' <span style="font-size:9px;color:' + (result === 'W' ? '#10D9A0' : '#F05555') + '">' + result + '</span>' : '')
+      + '</div></div></div>';
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// HEAD-TO-HEAD HISTORICAL RECORD (Predictor)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderH2HRecord(homeTeam, oppTeam) {
+  var h2hEl = document.getElementById('pred-h2h');
+  if (!h2hEl || !MODEL) return;
+  var sport = MLB_TEAMS.has(homeTeam) ? 'baseball' : 'football';
+  var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+  var preds = sportModel.predictions || [];
+
+  // Find games where home team played against oppTeam (by opponent name or key)
+  var oppNameLower = oppTeam.toLowerCase();
+  var h2h = preds.filter(function(p) {
+    return p.team === homeTeam && p.opponent && p.opponent.toLowerCase().replace(/\s+/g,'').indexOf(oppNameLower.replace(/\s+/g,'')) >= 0;
+  });
+
+  if (!h2h.length) {
+    // Also check reversed: oppTeam as home vs homeTeam
+    var homeNameLower = homeTeam.toLowerCase();
+    h2h = preds.filter(function(p) {
+      return p.team === oppTeam && p.opponent && p.opponent.toLowerCase().replace(/\s+/g,'').indexOf(homeNameLower.replace(/\s+/g,'')) >= 0;
+    });
+  }
+
+  if (!h2h.length) { h2hEl.style.display = 'none'; return; }
+
+  var wins = h2h.filter(function(p){ return p.won; }).length;
+  var losses = h2h.length - wins;
+  var atts = h2h.filter(function(p){ return p.actual; }).map(function(p){ return p.actual; });
+  var avgAtt = atts.length ? Math.round(atts.reduce(function(a,b){return a+b;},0)/atts.length) : null;
+  var lastGame = h2h[h2h.length - 1];
+
+  h2hEl.style.display = 'block';
+  setEl('h2h-wins',    wins);
+  setEl('h2h-losses',  losses);
+  setEl('h2h-avg-att', avgAtt ? avgAtt.toLocaleString() : '—');
+  setEl('h2h-last',    lastGame ? 'Last: ' + lastGame.date + ' · ' + (lastGame.won ? 'W' : 'L') : '');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// GHOST RISK TREND CHART (Live Data tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderGhostTrendChart() {
+  var td = teamData();
+  if (!td) return;
+  var games = (td.games || []).filter(function(g){ return g.is_home && g.ghost_risk != null; });
+  if (!games.length) return;
+  var labels = games.map(function(g){ return g.date ? g.date.slice(5) : ''; });
+  var risks  = games.map(function(g){ return Math.round((g.ghost_risk || 0) * 100 * 10) / 10; });
+  var colors = risks.map(function(r){ return r > 30 ? 'rgba(240,85,85,0.7)' : r > 20 ? 'rgba(245,165,36,0.7)' : 'rgba(16,217,160,0.6)'; });
+  mk('ghostTrendChart', {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Ghost Risk %',
+          data: risks,
+          backgroundColor: colors,
+          borderColor: colors,
+          borderWidth: 1,
+          borderRadius: 3
+        },
+        {
+          type: 'line',
+          label: '5-Game Avg',
+          data: risks.map(function(_, i) {
+            var w = risks.slice(Math.max(0, i-4), i+1);
+            return Math.round(w.reduce(function(a,b){return a+b;},0)/w.length * 10)/10;
+          }),
+          borderColor: 'rgba(245,165,36,0.85)',
+          backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 0, tension: 0.35, order: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: MUTED, font: { size: 10 } } },
+        tooltip: { callbacks: { label: function(ctx){ return ctx.parsed.y.toFixed(1) + '% ghost risk'; } } }
+      },
+      scales: {
+        x: { ticks: { color: MUTED, font: { size: 9 }, maxRotation: 0, maxTicksLimit: 12 }, grid: { color: GRID } },
+        y: { beginAtZero: true, ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return v + '%'; } }, grid: { color: GRID } }
+      }
+    }
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════

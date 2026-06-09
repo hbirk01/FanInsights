@@ -982,6 +982,7 @@ function boot() {
       // Refresh predictions tab now that MODEL is loaded
       var td = teamData();
       if (td) refreshPredictionsTab(td, TEAM_CONFIG[ACTIVE_TEAM] || TEAM_CONFIG['sf49ers']);
+      scanThresholdAlerts();
     }
     setTimeout(runPredictor, 500);
   });
@@ -1331,6 +1332,173 @@ function renderModelTab() {
         + '<td>' + beatCell + '</td></tr>';
     }).join('');
   }
+
+  // render multi-season chart at end
+  renderMultiSeasonChart();
+}
+
+// ── Multi-Season Trend Analysis ───────────────────────────────────────────────
+function renderMultiSeasonChart() {
+  if (!MODEL) return;
+  var sport = activeSport();
+  var sportModel = (sport === 'baseball' && MODEL.mlb) ? MODEL.mlb : (MODEL.nfl || MODEL);
+  var selectedModel = (document.getElementById('model-selector') || {}).value || 'ridge';
+  var allPreds;
+  if (selectedModel === 'randomforest') allPreds = sportModel.rf_predictions;
+  else if (selectedModel === 'gradboost') allPreds = sportModel.gb_predictions;
+  else allPreds = sportModel.predictions;
+  if (!allPreds || !allPreds.length) return;
+
+  // Group by season
+  var bySeasonMap = {};
+  allPreds.forEach(function(p) {
+    var s = p.season || 'Unknown';
+    if (!bySeasonMap[s]) bySeasonMap[s] = { actuals: [], predicted: [] };
+    if (p.actual)    bySeasonMap[s].actuals.push(p.actual);
+    if (p.predicted) bySeasonMap[s].predicted.push(p.predicted);
+  });
+
+  var seasons = Object.keys(bySeasonMap).sort();
+  var actAvg = seasons.map(function(s) {
+    var v = bySeasonMap[s].actuals;
+    return v.length ? Math.round(v.reduce(function(a,b){return a+b;},0)/v.length) : null;
+  });
+  var predAvg = seasons.map(function(s) {
+    var v = bySeasonMap[s].predicted;
+    return v.length ? Math.round(v.reduce(function(a,b){return a+b;},0)/v.length) : null;
+  });
+  var mapeArr = seasons.map(function(s, i) {
+    var g = bySeasonMap[s];
+    if (!g.actuals.length) return null;
+    var mapes = g.actuals.map(function(a, j) {
+      var pr = g.predicted[j];
+      return pr && a ? Math.abs(pr - a) / a : null;
+    }).filter(Boolean);
+    return mapes.length ? (mapes.reduce(function(a,b){return a+b;},0)/mapes.length*100).toFixed(1) : null;
+  });
+
+  mk('multiSeasonChart', {
+    data: {
+      labels: seasons,
+      datasets: [
+        {
+          type: 'bar', label: 'Actual Avg',
+          data: actAvg,
+          backgroundColor: 'rgba(34,211,238,0.18)', borderColor: 'rgba(34,211,238,0.7)',
+          borderWidth: 1.5, borderRadius: 4, order: 2
+        },
+        {
+          type: 'line', label: 'Predicted Avg',
+          data: predAvg,
+          borderColor: '#10D9A0', backgroundColor: 'transparent',
+          borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#10D9A0',
+          tension: 0.3, order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: MUTED, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            afterBody: function(items) {
+              var idx = items[0].dataIndex;
+              return mapeArr[idx] != null ? ['MAPE: ' + mapeArr[idx] + '%'] : [];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: MUTED, font: { size: 11 } }, grid: { color: GRID } },
+        y: {
+          beginAtZero: false,
+          ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return (v/1000).toFixed(0)+'K'; } },
+          grid: { color: GRID }
+        }
+      }
+    }
+  });
+
+  // MAPE annotation chips
+  var mapeRow = document.getElementById('season-mape-row');
+  if (mapeRow) {
+    mapeRow.innerHTML = seasons.map(function(s, i) {
+      var m = mapeArr[i];
+      var col = m == null ? MUTED : (parseFloat(m) < 4 ? '#10D9A0' : parseFloat(m) < 8 ? '#F5A524' : '#F05555');
+      return '<div style="text-align:center;padding:4px 10px;background:var(--surface3);border-radius:6px;border:1px solid var(--border)">'
+        + '<div style="font-size:11px;font-weight:700;color:var(--text)">' + s + '</div>'
+        + '<div style="font-size:10px;font-family:\'DM Mono\',monospace;color:' + col + '">'
+        + (m != null ? m + '% MAPE' : '—') + '</div>'
+        + '</div>';
+    }).join('');
+  }
+}
+
+// ── Threshold Alerts (Feature #9) ─────────────────────────────────────────────
+function scanThresholdAlerts() {
+  if (!MODEL) return;
+  var thresh = parseInt((document.getElementById('alert-threshold') || {}).value || 88) / 100;
+  var container = document.getElementById('threshold-alerts');
+  if (!container) return;
+
+  var nflModel = MODEL.nfl || MODEL;
+  var mlbModel = MODEL.mlb;
+  var allAlerts = [];
+
+  function scanSport(sportModel, sportLabel) {
+    if (!sportModel) return;
+    var preds = sportModel.predictions || [];
+    var teamCap = sportModel.team_capacities || {};
+    var teamMeans = sportModel.team_mean_attendance || {};
+
+    // Group by team, count at-risk test games
+    var byTeam = {};
+    preds.forEach(function(p) {
+      if (p.split !== 'test') return; // only test set predictions
+      var cap = teamCap[p.team] || teamMeans[p.team] || 70000;
+      var fillPct = p.actual ? (p.actual / cap) : (p.predicted / cap);
+      if (fillPct < thresh) {
+        if (!byTeam[p.team]) byTeam[p.team] = { count: 0, worst: 1, worstGame: null };
+        byTeam[p.team].count++;
+        if (fillPct < byTeam[p.team].worst) {
+          byTeam[p.team].worst = fillPct;
+          byTeam[p.team].worstGame = p;
+        }
+      }
+    });
+
+    Object.keys(byTeam).forEach(function(team) {
+      var d = byTeam[team];
+      allAlerts.push({ team: team, sport: sportLabel, count: d.count, worst: d.worst, worstGame: d.worstGame });
+    });
+  }
+
+  scanSport(nflModel, 'NFL');
+  scanSport(mlbModel, 'MLB');
+
+  // Sort by count desc
+  allAlerts.sort(function(a, b) { return b.count - a.count; });
+
+  if (!allAlerts.length) {
+    container.innerHTML = '<div class="alert a-opp"><div class="aicon">✅</div><div class="abody"><div class="atitle">No fill-rate alerts above ' + Math.round(thresh * 100) + '% threshold</div><div class="adesc">All test-set games predicted at or above the fill threshold.</div></div></div>';
+    return;
+  }
+
+  var threshPct = Math.round(thresh * 100);
+  container.innerHTML = allAlerts.slice(0, 6).map(function(a) {
+    var worstPct = Math.round(a.worst * 100);
+    var worstOpp = a.worstGame ? (a.worstGame.opponent || a.worstGame.team) : '—';
+    var worstDate = a.worstGame ? (a.worstGame.date || '') : '';
+    var teamLabel = (a.team.charAt(0).toUpperCase() + a.team.slice(1)).replace(/([a-z])([A-Z])/g, '$1 $2');
+    return '<div class="alert a-ghost" style="margin-bottom:0.4rem">'
+      + '<div class="aicon">⚠️</div>'
+      + '<div class="abody">'
+      + '<div class="atitle">' + a.sport + ' · ' + teamLabel + ' — ' + a.count + ' game' + (a.count > 1 ? 's' : '') + ' below ' + threshPct + '% fill</div>'
+      + '<div class="adesc">Lowest fill: <strong>' + worstPct + '%</strong> vs ' + worstOpp + (worstDate ? ' (' + worstDate + ')' : '') + '. Suggest targeted promotions 72h before tip-off.</div>'
+      + '<div class="aact"><button class="btn btn-gold" onclick="showPage(\'fan\')">Fan Strategy</button><button class="btn btn-out" onclick="showPage(\'predict\')">Predictor</button></div>'
+      + '</div></div>';
+  }).join('');
 }
 
 // ── team-specific model insights from real game data ──────────────────────────
@@ -1491,6 +1659,18 @@ function buildTeamInsights(games, teamName) {
 
 // ── interactive predictor ─────────────────────────────────────────────────────
 
+// Typical historical win% for head-to-head matchup calculator
+var OPP_WINPCT = {
+  sf49ers:0.62, chiefs:0.72, cowboys:0.56, eagles:0.59, giants:0.42,
+  commanders:0.48, seahawks:0.51, rams:0.53, cardinals:0.38, bears:0.41,
+  lions:0.62, packers:0.57, vikings:0.51, saints:0.48, falcons:0.46,
+  buccaneers:0.52, panthers:0.36, bills:0.65, patriots:0.41, dolphins:0.51,
+  jets:0.44, raiders:0.38, chargers:0.51, broncos:0.45, ravens:0.65,
+  steelers:0.54, browns:0.50, bengals:0.54, texans:0.55, colts:0.49,
+  jaguars:0.46, titans:0.45, rockies:0.42, dodgers:0.65, cubs:0.52,
+  pirates:0.40, yankees:0.59
+};
+
 function runPredictor() {
   if (!MODEL) return;
   var teamKey = document.getElementById('pred-team').value;
@@ -1499,14 +1679,13 @@ function runPredictor() {
   var lm = sportModel.linear_model || {};
   var coeffs = lm.coefficients || {};
   var week    = parseInt(document.getElementById('pred-week').value) || 8;
-  var oppPct  = parseInt(document.getElementById('pred-opp').value) / 100;
   var streak  = parseInt(document.getElementById('pred-streak').value) || 0;
   var weather = document.getElementById('pred-weather').value;
-  var gametype = document.getElementById('pred-gametype').value;
-
-  var isPrime = gametype.indexOf('prime') >= 0;
-  var isDiv   = gametype.indexOf('div') >= 0 && gametype.indexOf('nondiv') < 0;
-  var isWknd  = !isPrime; // prime time usually weekday
+  var isPrime = !!(document.getElementById('pred-primetime') || {}).checked;
+  var isDiv   = !!(document.getElementById('pred-divisional') || {}).checked;
+  var isWknd  = !!(document.getElementById('pred-weekend') ? document.getElementById('pred-weekend').checked : true);
+  var oppKey  = (document.getElementById('pred-opponent') || {}).value || 'chiefs';
+  var oppPct  = OPP_WINPCT[oppKey] || 0.50;
   var phase   = week <= 6 ? 0 : week <= 12 ? 1 : 2;
 
   // Weather features
@@ -1536,7 +1715,7 @@ function runPredictor() {
 
   // MLB-specific feature additions (overlap keys reused; sport-specific added)
   if (predSport === 'baseball') {
-    featureMap.game_of_season = Math.round(week / 18 * 162);  // map week slider → game #
+    featureMap.game_of_season = Math.round(week / 18 * 162);
     featureMap.month = 4 + Math.round(week / 18 * 6);
     featureMap.is_friday = isWknd ? 1 : 0;
     featureMap.is_saturday = isWknd ? 1 : 0;
@@ -1569,7 +1748,12 @@ function runPredictor() {
   var predicted = Math.round(teamMean + delta);
   var rmse = lm.rmse || 3000;
   var ci = Math.round(rmse * 1.96);
+  var ciLo = predicted - ci;
+  var ciHi = predicted + ci;
   var fillPct = Math.round(predicted / capacity * 100 * 10) / 10;
+
+  // Fill-rate color
+  var fillCol = fillPct >= 96 ? '#22D3EE' : fillPct >= 88 ? '#10D9A0' : fillPct >= 78 ? '#F5A524' : '#F05555';
 
   // Ghost risk
   var ghost = 0.18;
@@ -1577,27 +1761,57 @@ function runPredictor() {
   if (weather === 'cold') ghost += 0.06;
   if (weather === 'hot')  ghost += 0.08;
   if (streak < -1)        ghost += Math.min(0.04 * Math.abs(streak), 0.20);
-  if (oppPct < 0.4)       ghost += 0.05;
+  if (oppPct > 0.6)       ghost += 0.04; // tough opponent
+  if (oppPct < 0.4)       ghost += 0.05; // weak matchup, less excitement
   ghost = Math.round(Math.min(ghost, 0.55) * 100);
+
+  // Matchup sub-label
+  var oppName = (document.getElementById('pred-opponent') || {}).options;
+  var oppNameStr = oppName && oppName[oppName.selectedIndex] ? oppName[oppName.selectedIndex].text : oppKey;
+  var flags = [];
+  if (isPrime) flags.push('Prime Time');
+  if (isDiv)   flags.push('Divisional');
+  if (isWknd)  flags.push('Weekend');
+  setEl('pred-matchup-sub', flags.length ? flags.join(' · ') : 'HOME GAME');
 
   // Show result
   var resultEl = document.getElementById('pred-result');
   if (resultEl) resultEl.style.display = 'block';
   setEl('pred-out-att',   predicted.toLocaleString());
-  setEl('pred-out-fill',  fillPct + '%');
-  setEl('pred-out-ci',    (predicted - ci).toLocaleString() + ' – ' + (predicted + ci).toLocaleString());
+
+  var fillEl = document.getElementById('pred-out-fill');
+  if (fillEl) { fillEl.textContent = fillPct + '%'; fillEl.style.color = fillCol; }
+
   setEl('pred-out-ghost', ghost + '%');
+
+  // CI bar visualization
+  var barCapacity = Math.max(capacity, ciHi + 1000);
+  var loLeft  = Math.max(0, Math.min(100, ciLo  / barCapacity * 100));
+  var hiLeft  = Math.max(0, Math.min(100, ciHi  / barCapacity * 100));
+  var needPct = Math.max(0, Math.min(100, predicted / barCapacity * 100));
+  var bandWidth = Math.max(0, hiLeft - loLeft);
+
+  var band   = document.getElementById('pred-ci-band');
+  var needle = document.getElementById('pred-ci-needle');
+  var clabel = document.getElementById('pred-ci-label');
+  if (band)   { band.style.left = loLeft.toFixed(1) + '%'; band.style.width = bandWidth.toFixed(1) + '%'; }
+  if (needle) { needle.style.left = needPct.toFixed(1) + '%'; needle.style.background = fillCol; }
+  if (clabel) { clabel.style.left = needPct.toFixed(1) + '%'; clabel.textContent = predicted.toLocaleString(); clabel.style.color = fillCol; }
+
+  setEl('pred-ci-lo-label', ciLo.toLocaleString());
+  setEl('pred-ci-hi-label', ciHi.toLocaleString());
 
   // Top factors
   factors.sort(function(a,b){ return Math.abs(b.effect) - Math.abs(a.effect); });
   var factorsEl = document.getElementById('pred-out-factors');
   if (factorsEl) {
-    factorsEl.innerHTML = '<strong>Top factors:</strong> ' + factors.slice(0,4).map(function(f){
-      var col = f.effect > 0 ? GREEN : RED;
-      return '<span style="color:' + col + ';margin-right:0.8rem">' +
-             (f.effect > 0 ? '▲' : '▼') + ' ' + f.label + ' ' +
-             (f.effect > 0 ? '+' : '') + f.effect.toLocaleString() + ' fans</span>';
-    }).join('');
+    factorsEl.innerHTML = '<strong style="color:var(--muted-hi)">Key factors:</strong> '
+      + factors.slice(0,5).map(function(f){
+        var col = f.effect > 0 ? GREEN : RED;
+        return '<span style="color:' + col + ';margin-right:0.8rem">'
+          + (f.effect > 0 ? '▲' : '▼') + ' ' + f.label + ' '
+          + (f.effect > 0 ? '+' : '') + f.effect.toLocaleString() + ' fans</span>';
+      }).join('');
   }
 }
 

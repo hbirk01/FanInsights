@@ -411,6 +411,13 @@
     <div class="card"><div class="card-header"><div class="card-title">Loyalty Score Trend</div><span style="font-size:0.74rem;color:var(--muted)">Real sentiment-adjusted</span></div><canvas id="loyaltyTrendChart" height="180"></canvas></div>
     <div class="card">
       <div class="card-header"><div class="card-title">Real-Time Alerts</div><span class="chip">🟢 Live</span></div>
+      <!-- threshold controls -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.75rem;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.06em">FILL THRESHOLD</span>
+        <input type="range" id="alert-threshold" min="70" max="98" value="88" style="flex:1;min-width:80px;max-width:120px" oninput="document.getElementById('alert-threshold-val').textContent=this.value+'%';scanThresholdAlerts()">
+        <strong id="alert-threshold-val" style="font-size:13px;color:var(--amber);font-family:'DM Mono',monospace">88%</strong>
+        <button onclick="scanThresholdAlerts()" style="padding:3px 10px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface3);border:1px solid var(--border-hi);border-radius:5px;color:var(--muted-hi);cursor:pointer">Rescan</button>
+      </div>
       <div id="overview-alerts">
         <div class="alert a-ghost"><div class="aicon">👻</div><div class="abody"><div class="atitle">14 Season Holders Not Checked In — Next Home Game</div><div class="adesc">Seats 122-B rows 4–6 likely empty. Predicted value of filling: $3,400.</div><div class="aact"><button class="btn btn-gold">Trigger Offer</button><button class="btn btn-out">View Fans</button></div></div></div>
         <div class="alert a-loc"><div class="aicon">📍</div><div class="abody"><div class="atitle">Fan Cluster — 6 fans within 8 mi, 3h pre-kickoff</div><div class="adesc">Marcus T., Priya K., and 4 others — none have tickets.</div><div class="aact"><button class="btn btn-blue">Geo-Targeted Offer</button></div></div></div>
@@ -418,6 +425,7 @@
         <div class="alert a-soc"><div class="aicon">📲</div><div class="abody"><div class="atitle">Post-Win Social Surge — 4,200 fans active</div><div class="adesc">90-min window open. Push incentive to top 500 influencer-tier fans.</div><div class="aact"><button class="btn btn-purple">Activate Campaign</button></div></div></div>
         <div class="alert a-soc"><div class="aicon">👥</div><div class="abody"><div class="atitle">3 Fans Have 8 Nearby Friends Without Tickets</div><div class="adesc">Marcus T., Sarah C., Amanda F. — friends within 5 mi, no tickets. Auto-share links ready. Est. 2.4 purchases at avg $142.</div><div class="aact"><button class="btn btn-purple">Send Share Links</button><button class="btn btn-out">View Network</button></div></div></div>
       </div>
+      <div id="threshold-alerts" style="margin-top:0.5rem"></div>
     </div>
   </div>
 </div>
@@ -881,46 +889,125 @@
     <p style="font-size:0.74rem;color:var(--muted);margin-top:0.75rem">ℹ️ Negative R² with low MAPE is expected for near-capacity NFL venues (~98% fill, tiny variance). MAPE is the operationally meaningful metric. MLB shows higher R² because attendance genuinely varies game-to-game.</p>
   </div>
 
-  <!-- interactive prediction tool -->
+  <!-- multi-season trend analysis -->
+  <div class="card mb">
+    <div class="card-header">
+      <div class="card-title">Multi-Season Trend Analysis <span class="rb">Predicted vs Actual</span></div>
+      <span style="font-size:0.74rem;color:var(--muted)">Avg attendance per season · hover for per-season MAPE</span>
+    </div>
+    <div style="position:relative;height:260px;"><canvas id="multiSeasonChart"></canvas></div>
+    <div id="season-mape-row" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)"></div>
+  </div>
+
+  <!-- head-to-head matchup predictor -->
   <div class="card">
-    <div class="card-header"><div class="card-title">🎯 Interactive Attendance Predictor</div><span style="font-size:0.74rem;color:var(--muted)">Applies linear model coefficients client-side</span></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.2rem">
+    <div class="card-header"><div class="card-title">⚔️ Head-to-Head Matchup Predictor</div><span style="font-size:0.74rem;color:var(--muted)">Live model coefficients · client-side</span></div>
+
+    <!-- Matchup banner -->
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:1rem;margin-bottom:1.4rem;padding:1rem;background:var(--surface3);border-radius:10px;border:1px solid var(--border)">
       <div>
-        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Team</div>
-        <select id="pred-team" class="team-selector" style="width:100%">
+        <div class="stat-label" style="font-size:0.68rem;margin-bottom:0.4rem">HOME TEAM</div>
+        <select id="pred-team" class="team-selector" style="width:100%" onchange="runPredictor()">
           <optgroup label="🏈 NFL">
             <option value="sf49ers">San Francisco 49ers</option>
             <option value="chiefs">Kansas City Chiefs</option>
             <option value="cowboys">Dallas Cowboys</option>
             <option value="eagles">Philadelphia Eagles</option>
+            <option value="giants">New York Giants</option>
+            <option value="commanders">Washington Commanders</option>
+            <option value="seahawks">Seattle Seahawks</option>
+            <option value="rams">Los Angeles Rams</option>
+            <option value="cardinals">Arizona Cardinals</option>
+            <option value="bears">Chicago Bears</option>
+            <option value="lions">Detroit Lions</option>
+            <option value="packers">Green Bay Packers</option>
+            <option value="vikings">Minnesota Vikings</option>
+            <option value="saints">New Orleans Saints</option>
+            <option value="falcons">Atlanta Falcons</option>
+            <option value="buccaneers">Tampa Bay Buccaneers</option>
+            <option value="panthers">Carolina Panthers</option>
+            <option value="bills">Buffalo Bills</option>
+            <option value="patriots">New England Patriots</option>
+            <option value="dolphins">Miami Dolphins</option>
+            <option value="jets">New York Jets</option>
+            <option value="raiders">Las Vegas Raiders</option>
+            <option value="chargers">Los Angeles Chargers</option>
+            <option value="broncos">Denver Broncos</option>
+            <option value="ravens">Baltimore Ravens</option>
+            <option value="steelers">Pittsburgh Steelers</option>
+            <option value="browns">Cleveland Browns</option>
+            <option value="bengals">Cincinnati Bengals</option>
+            <option value="texans">Houston Texans</option>
+            <option value="colts">Indianapolis Colts</option>
+            <option value="jaguars">Jacksonville Jaguars</option>
+            <option value="titans">Tennessee Titans</option>
           </optgroup>
           <optgroup label="⚾ MLB">
             <option value="rockies">Colorado Rockies</option>
-            <option value="yankees">New York Yankees</option>
-            <option value="cubs">Chicago Cubs</option>
-            <option value="cardinals">St. Louis Cardinals</option>
-            <option value="pirates">Pittsburgh Pirates</option>
             <option value="dodgers">Los Angeles Dodgers</option>
-          </optgroup>
-          <optgroup label="🏀 NBA">
-            <option value="lakers">Los Angeles Lakers</option>
-            <option value="warriors">Golden State Warriors</option>
-            <option value="celtics">Boston Celtics</option>
-            <option value="heat">Miami Heat</option>
-          </optgroup>
-          <optgroup label="🏎 IndyCar">
-            <option value="indy500">Indianapolis 500</option>
-            <option value="long_beach">Long Beach GP</option>
+            <option value="cubs">Chicago Cubs</option>
+            <option value="pirates">Pittsburgh Pirates</option>
+            <option value="yankees">New York Yankees</option>
           </optgroup>
         </select>
       </div>
+      <div style="text-align:center">
+        <div style="font-size:1.4rem;font-weight:900;color:var(--muted-hi);letter-spacing:-.02em">VS</div>
+        <div id="pred-matchup-sub" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);letter-spacing:.06em;margin-top:4px">HOME GAME</div>
+      </div>
+      <div>
+        <div class="stat-label" style="font-size:0.68rem;margin-bottom:0.4rem">OPPONENT</div>
+        <select id="pred-opponent" class="team-selector" style="width:100%" onchange="runPredictor()">
+          <optgroup label="🏈 NFL">
+            <option value="chiefs">Kansas City Chiefs</option>
+            <option value="sf49ers">San Francisco 49ers</option>
+            <option value="cowboys">Dallas Cowboys</option>
+            <option value="eagles">Philadelphia Eagles</option>
+            <option value="giants">New York Giants</option>
+            <option value="commanders">Washington Commanders</option>
+            <option value="seahawks">Seattle Seahawks</option>
+            <option value="rams">Los Angeles Rams</option>
+            <option value="cardinals">Arizona Cardinals</option>
+            <option value="bears">Chicago Bears</option>
+            <option value="lions">Detroit Lions</option>
+            <option value="packers">Green Bay Packers</option>
+            <option value="vikings">Minnesota Vikings</option>
+            <option value="saints">New Orleans Saints</option>
+            <option value="falcons">Atlanta Falcons</option>
+            <option value="buccaneers">Tampa Bay Buccaneers</option>
+            <option value="panthers">Carolina Panthers</option>
+            <option value="bills">Buffalo Bills</option>
+            <option value="patriots">New England Patriots</option>
+            <option value="dolphins">Miami Dolphins</option>
+            <option value="jets">New York Jets</option>
+            <option value="raiders">Las Vegas Raiders</option>
+            <option value="chargers">Los Angeles Chargers</option>
+            <option value="broncos">Denver Broncos</option>
+            <option value="ravens">Baltimore Ravens</option>
+            <option value="steelers">Pittsburgh Steelers</option>
+            <option value="browns">Cleveland Browns</option>
+            <option value="bengals">Cincinnati Bengals</option>
+            <option value="texans">Houston Texans</option>
+            <option value="colts">Indianapolis Colts</option>
+            <option value="jaguars">Jacksonville Jaguars</option>
+            <option value="titans">Tennessee Titans</option>
+          </optgroup>
+          <optgroup label="⚾ MLB">
+            <option value="rockies">Colorado Rockies</option>
+            <option value="dodgers">Los Angeles Dodgers</option>
+            <option value="cubs">Chicago Cubs</option>
+            <option value="pirates">Pittsburgh Pirates</option>
+            <option value="yankees">New York Yankees</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+
+    <!-- Game conditions -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:1rem;margin-bottom:1.2rem">
       <div>
         <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Week of Season: <strong id="pred-week-val">8</strong></div>
         <input type="range" id="pred-week" min="1" max="18" value="8" style="width:100%" oninput="document.getElementById('pred-week-val').textContent=this.value;runPredictor()">
-      </div>
-      <div>
-        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Opponent Win %: <strong id="pred-opp-val">50%</strong></div>
-        <input type="range" id="pred-opp" min="0" max="100" value="50" style="width:100%" oninput="document.getElementById('pred-opp-val').textContent=this.value+'%';runPredictor()">
       </div>
       <div>
         <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Team Win Streak: <strong id="pred-streak-val">0</strong></div>
@@ -936,25 +1023,39 @@
         </select>
       </div>
       <div>
-        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Game Type</div>
-        <select id="pred-gametype" class="team-selector" style="width:100%" onchange="runPredictor()">
-          <option value="day_div">Day · Divisional</option>
-          <option value="day_nondiv">Day · Non-Divisional</option>
-          <option value="prime_div">Prime Time · Divisional</option>
-          <option value="prime_nondiv">Prime Time · Non-Divisional</option>
-        </select>
+        <div class="stat-label" style="font-size:0.7rem;margin-bottom:0.4rem">Game Flags</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-hi);cursor:pointer"><input type="checkbox" id="pred-primetime" onchange="runPredictor()"> Prime Time</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-hi);cursor:pointer"><input type="checkbox" id="pred-divisional" onchange="runPredictor()"> Divisional Game</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-hi);cursor:pointer"><input type="checkbox" id="pred-weekend" checked onchange="runPredictor()"> Weekend</label>
+        </div>
       </div>
     </div>
 
+    <!-- Result card -->
     <div id="pred-result" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem">
-        <div><div class="stat-label" style="font-size:0.7rem">Predicted Attendance</div><div style="font-size:1.6rem;font-weight:800;color:var(--gold)" id="pred-out-att">—</div></div>
-        <div><div class="stat-label" style="font-size:0.7rem">Fill Rate</div><div style="font-size:1.6rem;font-weight:800;color:var(--blue)" id="pred-out-fill">—</div></div>
-        <div><div class="stat-label" style="font-size:0.7rem">Confidence Range</div><div style="font-size:1rem;font-weight:700;color:var(--muted)" id="pred-out-ci">—</div></div>
-        <div><div class="stat-label" style="font-size:0.7rem">Ghost Risk</div><div style="font-size:1.6rem;font-weight:800;color:var(--orange)" id="pred-out-ghost">—</div></div>
+      <!-- Key stats row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.2rem">
+        <div><div class="stat-label" style="font-size:0.7rem">Predicted Attendance</div><div style="font-size:1.6rem;font-weight:800;color:var(--cyan)" id="pred-out-att">—</div></div>
+        <div><div class="stat-label" style="font-size:0.7rem">Fill Rate</div><div style="font-size:1.6rem;font-weight:800" id="pred-out-fill" style="color:var(--green)">—</div></div>
+        <div><div class="stat-label" style="font-size:0.7rem">Ghost Risk</div><div style="font-size:1.6rem;font-weight:800;color:var(--amber)" id="pred-out-ghost">—</div></div>
       </div>
-      <div id="pred-out-factors" style="font-size:0.82rem;color:var(--muted)"></div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <!-- CI bar -->
+      <div style="margin-bottom:1.2rem">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:5px;font-family:'DM Mono',monospace;letter-spacing:.04em">
+          <span id="pred-ci-lo-label">—</span>
+          <span>95% CONFIDENCE INTERVAL</span>
+          <span id="pred-ci-hi-label">—</span>
+        </div>
+        <div style="position:relative;height:42px;background:var(--surface3);border-radius:8px;overflow:hidden">
+          <div id="pred-ci-band" style="position:absolute;top:0;bottom:0;background:rgba(34,211,238,0.12);border-left:2px solid rgba(34,211,238,0.35);border-right:2px solid rgba(34,211,238,0.35)"></div>
+          <div id="pred-ci-needle" style="position:absolute;top:0;bottom:0;width:3px;background:var(--cyan);border-radius:1px"></div>
+          <div id="pred-ci-label" style="position:absolute;top:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:var(--cyan);font-family:'DM Mono',monospace;white-space:nowrap;pointer-events:none"></div>
+        </div>
+      </div>
+      <!-- Top factors -->
+      <div id="pred-out-factors" style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem"></div>
+      <div style="padding-top:10px;border-top:1px solid var(--border)">
         <button onclick="downloadPredictionsCSV()" style="padding:5px 14px;font-size:11px;font-family:'DM Mono',monospace;background:var(--surface3);border:1px solid var(--border-hi);border-radius:6px;color:var(--muted-hi);cursor:pointer">⬇ Download All Predictions CSV</button>
       </div>
     </div>

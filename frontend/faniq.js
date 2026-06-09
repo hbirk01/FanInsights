@@ -375,35 +375,76 @@ function buildGhostTable() {
   var tbody = document.getElementById('ghostTableBody');
   if (!tbody) return;
 
-  // Merge real game data if available
-  var rows = ghostFans;
   var td = teamData();
+
+  // Build ranked fan list — blend demo fan profiles with real game-derived risk
+  var rankedFans = ghostFans.slice().sort(function(a,b){ return b.risk - a.risk; });
+
+  // If we have real game data, augment each fan's ghost risk with game-level signal
   if (td && td.games) {
-    var highRisk = td.games.filter(function(g){ return g.is_home && g.ghost_risk > 0.25; }).slice(0,6);
-    if (highRisk.length) {
-      rows = highRisk.map(function(g, i) {
-        return {
-          name: 'Season Holder #' + (1000 + i * 37),
-          section: 'Sec ' + (100 + Math.floor(g.ghost_risk*200)),
-          rate: Math.round(g.ghost_risk * 100) + '%',
-          nextProb: Math.round(Math.min(g.ghost_risk * 130, 95)) + '%',
-          last: g.weather && g.weather.is_rain ? 'Rain game' : g.date,
-          action: g.ghost_risk > 0.4 ? 'Personal Outreach' : 'Incentive Offer',
-          game: g.name,
-        };
-      });
+    var highRiskGames = td.games
+      .filter(function(g){ return g.is_home && g.ghost_risk != null; })
+      .sort(function(a,b){ return b.ghost_risk - a.ghost_risk; });
+    var avgGameRisk = highRiskGames.length
+      ? highRiskGames.reduce(function(s,g){return s+g.ghost_risk;},0)/highRiskGames.length : 0.2;
+
+    // Derive up to 12 simulated fans from real risk distribution
+    var syntheticFans = highRiskGames.slice(0, 12).map(function(g, i) {
+      var riskPct = Math.round(Math.min(g.ghost_risk * 120 + Math.random()*5, 95));
+      var tier    = riskPct > 65 ? 'at-risk' : riskPct > 40 ? 'silver' : 'gold';
+      var action  = riskPct > 65 ? 'Personal Outreach' : riskPct > 40 ? 'Incentive Offer' : 'Loyalty Nudge';
+      var ltv     = Math.round(1500 + (1 - g.ghost_risk) * 8000);
+      var daysSince = Math.round(g.ghost_risk * 45 + 3);
+      return {
+        id: 1000 + i * 37,
+        name: 'Season Holder #' + (1000 + i * 37),
+        tier: tier,
+        risk: riskPct,
+        ltv: ltv,
+        section: 'Sec ' + (100 + Math.floor(g.ghost_risk * 200)),
+        ghostRate: riskPct + '%',
+        nextProb: Math.round(Math.min(g.ghost_risk * 130, 95)) + '%',
+        lastContact: daysSince + ' days ago',
+        action: action,
+        attend: Math.round((1 - g.ghost_risk) * 16),
+        refGame: g.name || (g.opponent ? 'vs ' + g.opponent : ''),
+        wonRef: g.won,
+      };
+    });
+    if (syntheticFans.length >= 4) {
+      rankedFans = syntheticFans.sort(function(a,b){ return b.risk - a.risk; });
     }
   }
 
-  tbody.innerHTML = rows.map(function(f) {
+  // Risk tier badge
+  function riskBadge(riskNum) {
+    if (riskNum > 65) return '<span style="background:rgba(240,85,85,0.15);color:var(--red);border:1px solid rgba(240,85,85,0.3);border-radius:4px;padding:2px 7px;font-size:10px;font-family:\'DM Mono\',monospace;font-weight:600">HIGH</span>';
+    if (riskNum > 35) return '<span style="background:rgba(245,165,36,0.15);color:var(--amber);border:1px solid rgba(245,165,36,0.3);border-radius:4px;padding:2px 7px;font-size:10px;font-family:\'DM Mono\',monospace;font-weight:600">MED</span>';
+    return '<span style="background:rgba(16,217,160,0.12);color:var(--green);border:1px solid rgba(16,217,160,0.25);border-radius:4px;padding:2px 7px;font-size:10px;font-family:\'DM Mono\',monospace;font-weight:600">LOW</span>';
+  }
+
+  // Risk gauge bar
+  function riskBar(riskNum) {
+    var col = riskNum > 65 ? 'var(--red)' : riskNum > 35 ? 'var(--amber)' : 'var(--green)';
+    return '<div style="display:flex;align-items:center;gap:6px">'
+      + '<div style="flex:1;height:5px;background:var(--surface3);border-radius:3px;overflow:hidden"><div style="width:' + riskNum + '%;height:100%;background:' + col + ';border-radius:3px"></div></div>'
+      + '<span style="font-size:11px;font-family:\'DM Mono\',monospace;color:' + col + ';font-weight:600;min-width:32px">' + riskNum + '%</span>'
+      + '</div>';
+  }
+
+  tbody.innerHTML = rankedFans.slice(0, 20).map(function(f, idx) {
+    var riskNum = parseInt(f.ghostRate || f.risk || 0);
+    var actionColor = riskNum > 65 ? 'var(--red)' : riskNum > 35 ? 'var(--amber)' : 'var(--green)';
     return '<tr>' +
-      '<td>' + (f.game ? '<div style="font-size:0.85rem;font-weight:600">' + f.name + '</div><div style="font-size:0.72rem;color:var(--muted)">' + f.game + '</div>' : f.name) + '</td>' +
-      '<td style="color:var(--muted)">' + f.section + '</td>' +
-      '<td><span style="color:' + (parseInt(f.rate)>50?RED:ORANGE) + ';font-weight:600">' + f.rate + '</span></td>' +
-      '<td><span style="color:' + (parseInt(f.nextProb)>70?RED:ORANGE) + ';font-weight:700">' + f.nextProb + '</span></td>' +
-      '<td style="color:var(--muted)">' + f.last + '</td>' +
-      '<td><span class="tag tag-orange">' + f.action + '</span></td>' +
-      '<td><button class="btn-sm btn-gold" style="font-size:0.7rem">Act Now</button></td>' +
+      '<td style="font-size:11px;color:var(--muted);font-family:\'DM Mono\',monospace;width:28px">#' + (idx+1) + '</td>' +
+      '<td><div style="font-size:0.85rem;font-weight:600">' + f.name + '</div>' +
+        (f.refGame ? '<div style="font-size:0.7rem;color:var(--muted)">' + f.refGame + '</div>' : '') + '</td>' +
+      '<td style="color:var(--muted);font-size:0.8rem">' + (f.section||'—') + '</td>' +
+      '<td style="min-width:120px">' + riskBar(riskNum) + '</td>' +
+      '<td>' + riskBadge(riskNum) + '</td>' +
+      '<td style="color:var(--muted);font-size:0.8rem">' + (f.lastContact||'—') + '</td>' +
+      '<td style="font-size:0.8rem;color:' + actionColor + ';font-weight:600">' + (f.action||'—') + '</td>' +
+      '<td><button class="btn-sm btn-gold" onclick="selectDemoFan(\'' + (riskNum>65?'priya':riskNum>40?'david':'marcus') + '\',this)" style="font-size:0.7rem;white-space:nowrap">Act Now</button></td>' +
     '</tr>';
   }).join('');
 }
@@ -729,18 +770,42 @@ function initCharts() {
 
   var forecastMin = Math.min.apply(null, forecastActual.filter(Boolean).concat(forecastFwd.filter(Boolean))) - 3000;
 
+  // CI from model; fall back to 5% of team mean
+  var ciHalf = (forecastSport === 'baseball' && MODEL.mlb)
+    ? (MODEL.mlb.ci_halfwidth || Math.round(meanAtt * 0.05))
+    : ((MODEL.nfl||MODEL).ci_halfwidth || Math.round(meanAtt * 0.05));
+
+  // CI upper/lower only for forecast rows (null for actuals)
+  var fwdUpper = forecastFwd.map(function(v){ return v != null ? v + ciHalf : null; });
+  var fwdLower = forecastFwd.map(function(v){ return v != null ? v - ciHalf : null; });
+
   mk('attendanceForecastChart', {
     type: 'line',
     data: {
       labels: forecastLabels,
       datasets: [
-        { label:'Actual',   data:forecastActual, borderColor:GREEN, tension:0.3, pointRadius:4, fill:false },
-        { label:'Forecast', data:forecastFwd,    borderColor:GOLD,  borderDash:[5,4], tension:0.3, pointRadius:4, fill:false },
-        { label:'Season avg', data:forecastLabels.map(function(){ return Math.round(meanAtt); }), borderColor:'#374151', borderDash:[2,4], pointRadius:0, fill:false }
+        // CI shaded band (upper fills down to lower via Chart.js fill)
+        { label:'CI Upper', data:fwdUpper, borderColor:'transparent', backgroundColor:'rgba(245,165,36,0.10)', fill:'+1', pointRadius:0, tension:0.3 },
+        { label:'CI Lower', data:fwdLower, borderColor:'transparent', backgroundColor:'rgba(245,165,36,0.10)', fill:false, pointRadius:0, tension:0.3 },
+        { label:'Actual',     data:forecastActual, borderColor:GREEN, tension:0.3, pointRadius:4, fill:false },
+        { label:'Forecast',   data:forecastFwd,    borderColor:GOLD,  borderDash:[5,4], tension:0.3, pointRadius:4, fill:false },
+        { label:'Season avg', data:forecastLabels.map(function(){ return Math.round(meanAtt); }), borderColor:'rgba(55,65,81,0.8)', borderDash:[2,4], pointRadius:0, fill:false }
       ]
     },
     options: {
-      plugins:{ legend:{ labels:{ color:MUTED, font:{size:10} } } },
+      plugins:{ legend:{ labels:{ color:MUTED, font:{size:10},
+        filter: function(item){ return item.text !== 'CI Upper' && item.text !== 'CI Lower'; }
+      }},
+        tooltip:{ callbacks:{ label:function(ctx){
+          if (ctx.dataset.label === 'CI Upper' || ctx.dataset.label === 'CI Lower') return null;
+          if (ctx.dataset.label === 'Forecast' && ctx.parsed.y) {
+            return ['Forecast: ' + Math.round(ctx.parsed.y).toLocaleString(),
+                    '±' + ciHalf.toLocaleString() + ' fans (95% CI)',
+                    'Range: ' + (Math.round(ctx.parsed.y)-ciHalf).toLocaleString() + ' – ' + (Math.round(ctx.parsed.y)+ciHalf).toLocaleString()];
+          }
+          return ctx.dataset.label + ': ' + Math.round(ctx.parsed.y).toLocaleString();
+        }}}
+      },
       scales: {
         x: tickColor(),
         y: Object.assign({ min: forecastMin }, tickColor(), { ticks:{ callback:function(v){ return (v/1000).toFixed(0)+'K'; } } })

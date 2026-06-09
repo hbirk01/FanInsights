@@ -284,6 +284,10 @@
         <option value="long_beach">Long Beach GP</option>
       </optgroup>
     </select>
+    <button onclick="startTour()" title="Press ? for help"
+       style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border-hi);color:var(--muted-hi);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0">
+      🎯 Demo Tour
+    </button>
     <a id="gameday-nav-btn" href="/gameday.html?team=sf49ers"
        style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;background:var(--cyan);color:#050B18;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:opacity .15s"
        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
@@ -512,9 +516,15 @@
     <div class="insight" style="margin-top:1rem"><div class="insight-label">F1 Fan Intelligence</div><div class="insight-text">Same FanIQ model for F1: geo-triggered hospitality offers, paddock tour upsells, merchandise delivery to grandstand seats. Live data from ESPN F1 scoreboard API.</div></div>
   </div>
 
-  <div class="card">
-    <div class="card-header"><div class="card-title">NFL League News — Cross-Team Sentiment Signals <span class="rb">ESPN · Live</span></div></div>
-    <div id="nfl-news-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.75rem"></div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Weather Severity vs Attendance Impact <span class="rb">Scatter</span></div><span style="font-size:0.74rem;color:var(--muted)">Each dot = one home game</span></div>
+      <div style="position:relative;height:220px;"><canvas id="wxScatterChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">NFL League News — Cross-Team Sentiment Signals <span class="rb">ESPN · Live</span></div></div>
+      <div id="nfl-news-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.75rem"></div>
+    </div>
   </div>
 </div>
 
@@ -1263,6 +1273,24 @@ refreshRealDataPanels = function() {
     <div style="flex:1;overflow:hidden;min-height:0">
       <iframe id="email-iframe" style="width:100%;height:100%;border:none;min-height:500px" sandbox="allow-same-origin"></iframe>
     </div>
+  </div>
+</div>
+
+<!-- ═══════ DEMO TOUR OVERLAY ═══════ -->
+<div id="tour-overlay" style="display:none;position:fixed;inset:0;z-index:8000;pointer-events:none">
+  <div style="position:absolute;inset:0;background:rgba(5,11,24,0.7);pointer-events:all" onclick="closeTour()"></div>
+</div>
+<div id="tour-card" style="display:none;position:fixed;z-index:8001;max-width:340px;background:var(--surface);border:1px solid var(--border-hi);border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,0.6);padding:1.4rem">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.8rem">
+    <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--cyan);letter-spacing:.08em" id="tour-step-label">STEP 1 / 8</div>
+    <button onclick="closeTour()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0;line-height:1">×</button>
+  </div>
+  <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.5rem" id="tour-title">—</div>
+  <div style="font-size:0.84rem;color:var(--muted-hi);line-height:1.55" id="tour-body">—</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1.1rem;padding-top:0.8rem;border-top:1px solid var(--border)">
+    <button onclick="tourPrev()" id="tour-prev-btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);border:1px solid var(--border-hi);border-radius:7px;color:var(--muted-hi);cursor:pointer;font-family:'DM Sans',sans-serif">← Prev</button>
+    <div style="display:flex;gap:4px" id="tour-dots"></div>
+    <button onclick="tourNext()" id="tour-next-btn" style="padding:6px 14px;font-size:12px;background:var(--cyan);border:none;border-radius:7px;color:#050B18;cursor:pointer;font-weight:700;font-family:'DM Sans',sans-serif">Next →</button>
   </div>
 </div>
 </body>

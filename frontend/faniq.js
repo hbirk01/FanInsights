@@ -186,7 +186,7 @@ function showPage(id, el) {
   if (id === 'profiles') { renderRetentionFunnel(); renderSegmentPieChart(); }
   if (id === 'ltv')      { setTimeout(runSimulator, 50); setTimeout(renderRevForecastChart, 80); setTimeout(renderLtvTierChart, 80); }
   if (id === 'predict')  { renderAtRiskTable(0.88); renderScheduleCalendar(); }
-  if (id === 'realdata') { renderGhostTrendChart(); }
+  if (id === 'realdata') { renderGhostTrendChart(); setTimeout(renderWxScatterChart, 80); }
 }
 
 function updateTeam(val) {
@@ -3010,4 +3010,132 @@ function filterGhostTable() {
 
   var countEl = document.getElementById('ghost-filter-count');
   if (countEl) countEl.textContent = shown + ' of ' + rows.length + ' shown';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DEMO TOUR
+// ════════════════════════════════════════════════════════════════════════════
+
+var TOUR_STEPS = [
+  { page: 'overview', title: 'Fan Intelligence Dashboard', body: 'Welcome to FanInsights — the full-stack fan intelligence platform. This Overview shows real-time KPIs powered by live ESPN data, NLP sentiment analysis, and your attendance model. Press 1–9 anytime to jump between tabs.' },
+  { page: 'realdata', title: '📡 Live Data Integration', body: 'Real game data scraped from ESPN — injury reports, weather forecasts from Open-Meteo, news sentiment, and historical attendance. All refreshed automatically each scraper run.' },
+  { page: 'ghost',    title: '👻 Ghost Ticket Intelligence', body: 'The model predicts which season holders won\'t show up 72h before kickoff. We rank fans by ghost risk, trigger personalized offers, and fill empty seats via flash sale. The campaign tracker shows real ROI per campaign.' },
+  { page: 'gameday',  title: '⚡ Game Day AI Engine', body: 'On game day, geo-triggers, seat upgrades, food pre-orders and social pushes are all personalized per fan. The entry feed shows real-time check-in rates vs expected, auto-triggering waitlist sales at T-60 min.' },
+  { page: 'ltv',      title: '💰 Lifetime Value Model', body: 'Every fan has a 3-year projected LTV across tickets, food, merch, digital, and referral value. The Revenue Impact Simulator lets you model the ROI of saving at-risk fans before you spend a dollar.' },
+  { page: 'predict',  title: '📅 Attendance Predictions', body: 'The attendance forecast uses Ridge / ElasticNet / Random Forest / Gradient Boosting trained on real ESPN data. The Schedule Calendar shows fill-rate risk per game, and the At-Risk Games table surfaces which matchups need intervention.' },
+  { page: 'model',    title: '🔬 Model Transparency', body: 'Full model explainability: feature importances, OLS coefficients, actual vs predicted scatter, multi-season trend analysis, and league benchmarking. Switch between models with the dropdown — all metrics update live.' },
+  { page: 'social',   title: '📲 Social Hub', body: 'Connected fan social accounts generate UGC, impressions, and referrals. The platform tracks viral coefficient per incentive campaign and attributes revenue back to individual fan actions through UTM + referral chains.' },
+];
+
+var _tourStep = 0;
+
+function startTour() {
+  _tourStep = 0;
+  document.getElementById('tour-overlay').style.display = 'block';
+  document.getElementById('tour-card').style.display    = 'block';
+  renderTourStep();
+}
+
+function closeTour() {
+  document.getElementById('tour-overlay').style.display = 'none';
+  document.getElementById('tour-card').style.display    = 'none';
+}
+
+function tourNext() {
+  if (_tourStep < TOUR_STEPS.length - 1) { _tourStep++; renderTourStep(); }
+  else closeTour();
+}
+
+function tourPrev() {
+  if (_tourStep > 0) { _tourStep--; renderTourStep(); }
+}
+
+function renderTourStep() {
+  var step = TOUR_STEPS[_tourStep];
+  var card = document.getElementById('tour-card');
+  setEl('tour-step-label', 'STEP ' + (_tourStep + 1) + ' / ' + TOUR_STEPS.length);
+  setEl('tour-title', step.title);
+  setEl('tour-body',  step.body);
+
+  // Navigate to the step's page
+  var tabs = document.querySelectorAll('.nav-tab');
+  var pageIdx = ['overview','realdata','profiles','ghost','gameday','ltv','predict','model','social'].indexOf(step.page);
+  if (pageIdx >= 0) { showPage(step.page, tabs[pageIdx] || null); }
+
+  // Dots
+  var dotsEl = document.getElementById('tour-dots');
+  if (dotsEl) {
+    dotsEl.innerHTML = TOUR_STEPS.map(function(_, i) {
+      return '<div style="width:6px;height:6px;border-radius:50%;background:' + (i === _tourStep ? '#22D3EE' : 'var(--border-hi)') + '"></div>';
+    }).join('');
+  }
+
+  // Prev/next button text
+  var nextBtn = document.getElementById('tour-next-btn');
+  if (nextBtn) nextBtn.textContent = _tourStep === TOUR_STEPS.length - 1 ? 'Done ✓' : 'Next →';
+
+  // Position card (center for now, could be adjacent to highlighted element)
+  card.style.top    = '50%';
+  card.style.left   = '50%';
+  card.style.transform = 'translate(-50%, -50%)';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// WEATHER SCATTER CHART (Live Data tab)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderWxScatterChart() {
+  var td = teamData();
+  if (!td) return;
+  var games = (td.games || []).filter(function(g){ return g.is_home && g.attendance && g.weather_severity != null; });
+  if (games.length < 5) return;
+
+  var meanAtt = games.reduce(function(s,g){return s+g.attendance;},0)/games.length;
+  var points = games.map(function(g) {
+    return {
+      x: Math.round(g.weather_severity * 100) / 100,
+      y: Math.round((g.attendance - meanAtt) / 1000 * 10) / 10,
+      date: g.date, opponent: g.opponent, won: g.won
+    };
+  });
+
+  mk('wxScatterChart', {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Home Games',
+        data: points,
+        backgroundColor: points.map(function(p){ return p.won ? 'rgba(34,211,238,0.65)' : 'rgba(240,85,85,0.55)'; }),
+        pointRadius: 6, pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: function(ctx) {
+            var d = ctx.raw;
+            return [
+              (d.opponent || '—') + ' · ' + (d.date || ''),
+              'Severity: ' + d.x,
+              'Attendance vs avg: ' + (d.y >= 0 ? '+' : '') + d.y + 'K',
+              d.won ? 'Win' : 'Loss'
+            ];
+          }
+        }}
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Weather Severity (0=clear, 1=severe)', color: MUTED, font: { size: 10 } },
+          ticks: { color: MUTED, font: { size: 10 } }, grid: { color: GRID }
+        },
+        y: {
+          title: { display: true, text: 'Attendance vs Team Avg (K fans)', color: MUTED, font: { size: 10 } },
+          ticks: { color: MUTED, font: { size: 10 }, callback: function(v){ return (v >= 0 ? '+' : '') + v + 'K'; } },
+          grid: { color: GRID }
+        }
+      }
+    }
+  });
 }
